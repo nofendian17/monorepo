@@ -9,7 +9,7 @@ import (
 )
 
 // Config holds the entire application configuration
-// It contains nested configurations for application, server, and database settings
+// It contains nested configurations for application, server, database, and security settings
 type Config struct {
 	// Application contains application-level settings
 	Application ApplicationConfig `mapstructure:"application"`
@@ -17,6 +17,8 @@ type Config struct {
 	Server ServerConfig `mapstructure:"server"`
 	// Database contains database connection settings
 	Database DatabaseConfig `mapstructure:"database"`
+	// Security contains security-related settings
+	Security SecurityConfig `mapstructure:"security"`
 }
 
 // ApplicationConfig holds the application-level configuration
@@ -32,7 +34,7 @@ type ApplicationConfig struct {
 // It contains settings for HTTP server behavior including timeouts and port
 type ServerConfig struct {
 	// Port specifies the port number the server will listen on
-	Port string `mapstructure:"port"`
+	Port int `mapstructure:"port"`
 	// ReadTimeout defines the maximum duration for reading the entire request, including the body, in seconds
 	ReadTimeout int `mapstructure:"read_timeout"` // in seconds
 	// WriteTimeout defines the maximum duration before timing out writes of the response, in seconds
@@ -46,6 +48,45 @@ type ServerConfig struct {
 type DatabaseConfig struct {
 	// Postgres contains PostgreSQL-specific settings
 	Postgres PostgresConfig `mapstructure:"postgres"`
+	// Redis contains Redis configuration
+	Redis RedisConfig `mapstructure:"redis"`
+}
+
+// SecurityConfig holds the security configuration
+// It contains settings for security-related features like JWT
+type SecurityConfig struct {
+	// JWT contains JWT token configuration
+	JWT JWTConfig `mapstructure:"jwt"`
+}
+
+// JWTConfig holds the JWT configuration
+// It contains settings for JWT token generation and validation
+type JWTConfig struct {
+	// AccessTokenSecret is the secret key for signing access tokens
+	AccessTokenSecret string `mapstructure:"access_token_secret"`
+	// RefreshTokenSecret is the secret key for signing refresh tokens
+	RefreshTokenSecret string `mapstructure:"refresh_token_secret"`
+	// AccessTokenExpiry is the expiry time for access tokens in minutes
+	AccessTokenExpiry int `mapstructure:"access_token_expiry"` // in minutes
+	// RefreshTokenExpiry is the expiry time for refresh tokens in hours
+	RefreshTokenExpiry int `mapstructure:"refresh_token_expiry"` // in hours
+	// Stateful indicates whether to use stateful token management
+	Stateful bool `mapstructure:"stateful"`
+}
+
+// RedisConfig holds the Redis configuration
+// It contains settings for Redis connection and client configuration
+type RedisConfig struct {
+	// Addrs specifies the Redis server addresses
+	Addrs []string `mapstructure:"addrs"`
+	// Username specifies the Redis username
+	Username string `mapstructure:"username"`
+	// Password specifies the Redis password
+	Password string `mapstructure:"password"`
+	// DB specifies the Redis database number
+	DB int `mapstructure:"db"`
+	// PoolSize specifies the maximum number of socket connections
+	PoolSize int `mapstructure:"pool_size"`
 }
 
 // PostgresConfig holds the PostgreSQL database configuration
@@ -110,6 +151,16 @@ func LoadConfig() (*Config, error) {
 	viper.SetDefault("database.postgres.debug", false)
 	viper.SetDefault("application.name", "Application Service")
 	viper.SetDefault("application.version", "1.0")
+	viper.SetDefault("security.jwt.access_token_secret", "default-access-secret")
+	viper.SetDefault("security.jwt.refresh_token_secret", "default-refresh-secret")
+	viper.SetDefault("security.jwt.access_token_expiry", 15)    // minutes
+	viper.SetDefault("security.jwt.refresh_token_expiry", 24*7) // hours (7 days)
+	viper.SetDefault("security.jwt.stateful", false)
+	viper.SetDefault("database.redis.addrs", []string{"localhost:6379"})
+	viper.SetDefault("database.redis.username", "")
+	viper.SetDefault("database.redis.password", "")
+	viper.SetDefault("database.redis.db", 0)
+	viper.SetDefault("database.redis.pool_size", 10)
 
 	if err := viper.ReadInConfig(); err != nil {
 		var configFileNotFoundError viper.ConfigFileNotFoundError

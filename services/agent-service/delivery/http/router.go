@@ -12,14 +12,16 @@ type Router struct {
 	Handler       *UserHandler
 	AgentHandler  *AgentHandler
 	HealthHandler *HealthHandler
+	AuthHandler   *AuthHandler
 	AppLogger     logger.LoggerInterface
 }
 
-func NewRouter(userHandler *UserHandler, agentHandler *AgentHandler, healthHandler *HealthHandler, appLogger logger.LoggerInterface) *Router {
+func NewRouter(userHandler *UserHandler, agentHandler *AgentHandler, healthHandler *HealthHandler, authHandler *AuthHandler, appLogger logger.LoggerInterface) *Router {
 	return &Router{
 		Handler:       userHandler,
 		AgentHandler:  agentHandler,
 		HealthHandler: healthHandler,
+		AuthHandler:   authHandler,
 		AppLogger:     appLogger,
 	}
 }
@@ -37,6 +39,11 @@ func (r *Router) SetupRoutes() http.Handler {
 
 	router.Route("/api/v1", func(api chi.Router) {
 		// You can add more middleware here if needed
+		// Auth routes
+		api.Route("/auth", func(auth chi.Router) {
+			auth.Post("/login", r.AuthHandler.LoginHandler)
+			auth.Post("/refresh", r.AuthHandler.RefreshHandler)
+		})
 		// User routes
 		api.Route("/users", func(users chi.Router) {
 			users.Post("/", r.Handler.CreateHandler)

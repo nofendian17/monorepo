@@ -8,7 +8,7 @@ application:
 # Server configuration
 server:
   # Port specifies the port number the server will listen on
-  port: "8080"
+  port: 8080
   # ReadTimeout defines the maximum duration for reading the entire request, including the body, in seconds
   read_timeout: 15
   # WriteTimeout defines the maximum duration before timing out writes of the response, in seconds
@@ -46,3 +46,32 @@ database:
     debug: true
     # IsUseMigrate specifies whether to use database migration
     is_use_migrate: true
+
+  # Redis configuration for caching and stateful JWT management
+  redis:
+    # Addrs specifies the Redis server addresses (array of host:port)
+    addrs:
+      - "localhost:6379"
+    # Username specifies the Redis username (leave empty if not required)
+    username: ""
+    # Password specifies the Redis password (leave empty if not required)
+    password: ""
+    # DB specifies the Redis database number (0-15)
+    db: 0
+    # PoolSize specifies the maximum number of socket connections
+    pool_size: 10
+
+# Security configuration for authentication and authorization
+security:
+  # JWT token configuration
+  jwt:
+    # AccessTokenSecret is the secret key for signing access tokens (use a strong, random string in production)
+    access_token_secret: "your-access-token-secret-key-here"
+    # RefreshTokenSecret is the secret key for signing refresh tokens (use a different strong, random string in production)
+    refresh_token_secret: "your-refresh-token-secret-key-here"
+    # AccessTokenExpiry is the expiry time for access tokens in minutes
+    access_token_expiry: 15
+    # RefreshTokenExpiry is the expiry time for refresh tokens in hours
+    refresh_token_expiry: 168  # 7 days
+    # Stateful indicates whether to use stateful token management with Redis (true) or stateless (false)
+    stateful: true

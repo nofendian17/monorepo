@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -15,8 +16,10 @@ import (
 	"agent-service/domain/model"
 	pgRepository "agent-service/repository/postgres"
 	"agent-service/usecase"
+	"monorepo/pkg/jwt"
 	"monorepo/pkg/logger"
 	"monorepo/pkg/postgres"
+	"monorepo/pkg/redis"
 )
 
 // main is the entry point of the application
@@ -71,6 +74,46 @@ func main() {
 		}
 	}
 
+	// Initialize Redis client
+	redisClient, redisErr := redis.New(
+		redis.WithAddrs(cfg.Database.Redis.Addrs),
+		redis.WithUsername(cfg.Database.Redis.Username),
+		redis.WithPassword(cfg.Database.Redis.Password),
+		redis.WithDB(cfg.Database.Redis.DB),
+		redis.WithPoolSize(cfg.Database.Redis.PoolSize),
+	)
+	if redisErr != nil {
+		appLogger.Error("Failed to initialize Redis client", "error", redisErr)
+		os.Exit(1)
+	}
+
+	// Initialize JWT client
+	var jwtClient jwt.JWTClient
+	if cfg.Security.JWT.Stateful {
+		// Initialize JWT client with Redis for stateful mode
+		jwtClient, err = jwt.NewStatefulWithRedis(redisClient,
+			jwt.WithAccessTokenSecret(cfg.Security.JWT.AccessTokenSecret),
+			jwt.WithRefreshTokenSecret(cfg.Security.JWT.RefreshTokenSecret),
+			jwt.WithAccessTokenExpiry(time.Duration(cfg.Security.JWT.AccessTokenExpiry)*time.Minute),
+			jwt.WithRefreshTokenExpiry(time.Duration(cfg.Security.JWT.RefreshTokenExpiry)*time.Hour),
+			jwt.WithStateful(true),
+		)
+	} else {
+		// Initialize JWT client for stateless mode
+		jwtClient, err = jwt.NewWithConfig(jwt.TokenConfig{
+			AccessTokenSecret:  cfg.Security.JWT.AccessTokenSecret,
+			RefreshTokenSecret: cfg.Security.JWT.RefreshTokenSecret,
+			AccessTokenExpiry:  time.Duration(cfg.Security.JWT.AccessTokenExpiry) * time.Minute,
+			RefreshTokenExpiry: time.Duration(cfg.Security.JWT.RefreshTokenExpiry) * time.Hour,
+			Stateful:           false,
+		})
+	}
+
+	if err != nil {
+		appLogger.Error("Failed to initialize JWT client", "error", err)
+		os.Exit(1)
+	}
+
 	// Initialize repository
 	userRepo := pgRepository.NewUserRepository(postgresClient.GetDB(), appLogger)
 	agentRepo := pgRepository.NewAgentRepository(postgresClient.GetDB(), appLogger)
@@ -79,20 +122,24 @@ func main() {
 	userUsecase := usecase.NewUserUseCase(userRepo, appLogger)
 	agentUsecase := usecase.NewAgentUseCase(agentRepo, appLogger)
 
+	// Initialize auth usecase
+	authUsecase := usecase.NewAuthUseCase(userRepo, agentRepo, jwtClient, appLogger)
+
 	// Initialize handlers
 	userHandler := httpDelivery.NewUserHandler(userUsecase, appLogger)
 	agentHandler := httpDelivery.NewAgentHandler(agentUsecase, appLogger)
 	healthHandler := httpDelivery.NewHealthHandler(appLogger)
+	authHandler := httpDelivery.NewAuthHandler(authUsecase, appLogger)
 
 	// Initialize router
-	router := httpDelivery.NewRouter(userHandler, agentHandler, healthHandler, appLogger)
+	router := httpDelivery.NewRouter(userHandler, agentHandler, healthHandler, authHandler, appLogger)
 
 	// Setup routes
 	httpHandler := router.SetupRoutes()
 
 	// Start server
 	server := &http.Server{
-		Addr:         ":" + cfg.Server.Port,
+		Addr:         ":" + strconv.Itoa(cfg.Server.Port),
 		Handler:      httpHandler,
 		ReadTimeout:  time.Duration(cfg.Server.ReadTimeout) * time.Second,
 		WriteTimeout: time.Duration(cfg.Server.WriteTimeout) * time.Second,

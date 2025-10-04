@@ -58,6 +58,10 @@ var (
 		Message: "cannot delete agent with children",
 		Code:    400, // StatusBadRequest
 	}
+	ErrInvalidCredentials = &AppError{
+		Message: "invalid email or password",
+		Code:    401, // StatusUnauthorized
+	}
 )
 
 // Standard error types for repositories
