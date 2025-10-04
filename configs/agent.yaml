@@ -1,0 +1,48 @@
+# Application-level configuration
+application:
+  # Name specifies the name of the application
+  name: "Application Service"
+  # Version specifies the version of the application
+  version: "1.0.0"
+
+# Server configuration
+server:
+  # Port specifies the port number the server will listen on
+  port: "8080"
+  # ReadTimeout defines the maximum duration for reading the entire request, including the body, in seconds
+  read_timeout: 15
+  # WriteTimeout defines the maximum duration before timing out writes of the response, in seconds
+  write_timeout: 15
+  # ShutdownTimeout defines the maximum duration the server will wait for active connections to finish during shutdown, in seconds
+  shutdown_timeout: 30
+
+# Database configuration
+database:
+  # PostgreSQL-specific settings
+  postgres:
+    # Host specifies the database server host
+    host: "localhost"
+    # Port specifies the database server port
+    port: 5432
+    # User specifies the database user
+    user: "user"
+    # Password specifies the database password
+    password: "secret"
+    # DBName specifies the database name
+    dbname: "test"
+    # Schema specifies the database schema
+    schema: "public"
+    # SSLMode specifies the SSL mode for database connection
+    sslmode: "disable"
+    # MaxIdleConns specifies the maximum number of idle connections in the pool
+    max_idle_conns: 10
+    # MaxOpenConns specifies the maximum number of open connections to the database
+    max_open_conns: 100
+    # ConnMaxIdleTime specifies the maximum amount of time a connection may be idle, in minutes
+    conn_max_idle_time: 5
+    # ConnMaxLifetime specifies the maximum amount of time a connection may be reused, in minutes
+    conn_max_lifetime: 60
+    # Debug enables or disables debug mode for database operations
+    debug: true
+    # IsUseMigrate specifies whether to use database migration
+    is_use_migrate: true
