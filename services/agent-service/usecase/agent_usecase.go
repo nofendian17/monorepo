@@ -183,8 +183,6 @@ func (uc *agentUseCase) UpdateAgent(ctx context.Context, agent *model.Agent) err
 		return domain.ErrInvalidAgentType
 	}
 
-	// TODO: Email uniqueness check removed - consider database-level unique constraint
-
 	// If parent agent ID is provided, validate it exists and prevent circular reference
 	if agent.ParentAgentID != nil {
 		parentAgent, err := uc.agentRepo.GetByID(ctx, *agent.ParentAgentID)

@@ -67,7 +67,7 @@ func (r *agentRepository) GetByID(ctx context.Context, id string) (*model.Agent,
 // Returns an error if the operation fails
 func (r *agentRepository) Update(ctx context.Context, agent *model.Agent) error {
 	r.logger.InfoContext(ctx, "Updating agent", "id", agent.ID, "email", agent.Email)
-	if err := r.db.WithContext(ctx).Save(agent).Error; err != nil {
+	if err := r.db.WithContext(ctx).Model(&model.Agent{}).Where("id = ?", agent.ID).Updates(agent).Error; err != nil {
 		r.logger.ErrorContext(ctx, "Failed to update agent", "id", agent.ID, "email", agent.Email, "error", err)
 		return fmt.Errorf("failed to update agent: %w", err)
 	}

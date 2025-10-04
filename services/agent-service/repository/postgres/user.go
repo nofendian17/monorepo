@@ -85,7 +85,7 @@ func (r *userRepository) GetByEmail(ctx context.Context, email string) (*model.U
 // Returns an error if the operation fails
 func (r *userRepository) Update(ctx context.Context, user *model.User) error {
 	r.logger.InfoContext(ctx, "Updating user", "id", user.ID, "email", user.Email)
-	if err := r.db.WithContext(ctx).Save(user).Error; err != nil {
+	if err := r.db.WithContext(ctx).Model(&model.User{}).Where("id = ?", user.ID).Updates(user).Error; err != nil {
 		r.logger.ErrorContext(ctx, "Failed to update user", "id", user.ID, "email", user.Email, "error", err)
 		return fmt.Errorf("failed to update user: %w", err)
 	}
