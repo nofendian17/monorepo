@@ -30,14 +30,16 @@ type UserResponse struct {
 
 // AgentResponse represents the response payload for an agent
 type AgentResponse struct {
-	ID            string  `json:"id"`
-	AgentName     string  `json:"agent_name"`
-	AgentType     string  `json:"agent_type"`
-	ParentAgentID *string `json:"parent_agent_id,omitempty"`
-	Email         string  `json:"email"`
-	IsActive      bool    `json:"is_active"`
-	CreatedAt     string  `json:"created_at"`
-	UpdatedAt     string  `json:"updated_at"`
+	ID            string          `json:"id"`
+	AgentName     string          `json:"agent_name"`
+	AgentType     string          `json:"agent_type"`
+	ParentAgentID *string         `json:"parent_agent_id,omitempty"`
+	Parent        *AgentResponse  `json:"parent,omitempty"`
+	Children      []AgentResponse `json:"children,omitempty"`
+	Email         string          `json:"email"`
+	IsActive      bool            `json:"is_active"`
+	CreatedAt     string          `json:"created_at"`
+	UpdatedAt     string          `json:"updated_at"`
 }
 
 // GetUserByIDRequest represents the request for getting a user by ID
@@ -65,6 +67,12 @@ type UpdateUserRequest struct {
 	PasswordConfirm string  `json:"password_confirm,omitempty" validate:"omitempty,min=8,eqfield=Password"`
 	IsActive        *bool   `json:"is_active,omitempty"`
 }
+
+// UpdateUserStatusRequest represents the request payload for updating user active status
+type UpdateUserStatusRequest struct {
+	IsActive bool `json:"is_active" validate:"required"`
+}
+
 type UsersListResponse struct {
 	Users []UserResponse `json:"users"`
 }
@@ -99,7 +107,7 @@ func UserModelToResponse(user *model.User) *UserResponse {
 
 // AgentModelToResponse converts model.Agent to AgentResponse
 func AgentModelToResponse(agent *model.Agent) *AgentResponse {
-	return &AgentResponse{
+	resp := &AgentResponse{
 		ID:            agent.ID,
 		AgentName:     agent.AgentName,
 		AgentType:     agent.AgentType,
@@ -109,6 +117,19 @@ func AgentModelToResponse(agent *model.Agent) *AgentResponse {
 		CreatedAt:     agent.CreatedAt.Format(time.RFC3339),
 		UpdatedAt:     agent.UpdatedAt.Format(time.RFC3339),
 	}
+
+	if agent.Parent != nil && agent.Parent.ID != "" {
+		resp.Parent = AgentModelToResponse(agent.Parent)
+	}
+
+	if len(agent.Children) > 0 {
+		resp.Children = make([]AgentResponse, len(agent.Children))
+		for i, child := range agent.Children {
+			resp.Children[i] = *AgentModelToResponse(&child)
+		}
+	}
+
+	return resp
 }
 
 // UserModelsToResponses converts slice of model.User to slice of UserResponse

@@ -63,6 +63,7 @@ func main() {
 		// Run database migrations
 		err = postgresClient.Migrate(
 			&model.User{},
+			&model.Agent{},
 		)
 		if err != nil {
 			appLogger.Error("Failed to migrate database", "error", err)
@@ -72,16 +73,19 @@ func main() {
 
 	// Initialize repository
 	userRepo := pgRepository.NewUserRepository(postgresClient.GetDB(), appLogger)
+	agentRepo := pgRepository.NewAgentRepository(postgresClient.GetDB(), appLogger)
 
 	// Initialize usecase
 	userUsecase := usecase.NewUserUseCase(userRepo, appLogger)
+	agentUsecase := usecase.NewAgentUseCase(agentRepo, appLogger)
 
 	// Initialize handlers
 	userHandler := httpDelivery.NewUserHandler(userUsecase, appLogger)
+	agentHandler := httpDelivery.NewAgentHandler(agentUsecase, appLogger)
 	healthHandler := httpDelivery.NewHealthHandler(appLogger)
 
 	// Initialize router
-	router := httpDelivery.NewRouter(userHandler, healthHandler, appLogger)
+	router := httpDelivery.NewRouter(userHandler, agentHandler, healthHandler, appLogger)
 
 	// Setup routes
 	httpHandler := router.SetupRoutes()

@@ -228,6 +228,62 @@ func (h *UserHandler) UpdateHandler(w http.ResponseWriter, r *http.Request) {
 	h.API.Success(ctx, w, agent_service.UserModelToResponse(existingUser))
 }
 
+// UpdateStatusHandler handles HTTP requests to update user active status
+// It expects the user ID as a URL parameter and status data in the request body
+// Returns a 200 status code with the updated user on success
+// Returns a 400 status code for invalid ID format or request data
+// Returns a 422 status code for validation errors
+// Returns a 404 status code if the user is not found
+// Returns a 500 status code for internal server errors
+func (h *UserHandler) UpdateStatusHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	h.Logger.InfoContext(ctx, "Update user status handler called")
+
+	var req agent_service.UpdateUserStatusRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		h.Logger.ErrorContext(ctx, "Invalid request body for user status update", "error", err)
+		h.API.BadRequest(ctx, w, "Invalid request body")
+		return
+	}
+
+	userID := chi.URLParam(r, "id")
+	if userID == "" {
+		h.Logger.WarnContext(ctx, "User ID is required for status update")
+		h.API.BadRequest(ctx, w, "User ID is required")
+		return
+	}
+
+	// Validate the user ID
+	idReq := agent_service.GetUserByIDRequest{ID: userID}
+	if err := validator.ValidateStruct(&idReq); err != nil {
+		h.Logger.WarnContext(ctx, "Validation failed for user ID", "errors", err)
+		h.API.ValidationError(ctx, w, h.convertValidationErrors(err))
+		return
+	}
+
+	// Validate the status request
+	if err := validator.ValidateStruct(&req); err != nil {
+		h.Logger.WarnContext(ctx, "Validation failed for user status update", "errors", err)
+		h.API.ValidationError(ctx, w, h.convertValidationErrors(err))
+		return
+	}
+
+	if err := h.UserUseCase.UpdateUserStatus(ctx, userID, req.IsActive); err != nil {
+		h.handleUserError(ctx, w, err, userID)
+		return
+	}
+
+	// Get the updated user to return
+	user, err := h.UserUseCase.GetUserByID(ctx, userID)
+	if err != nil {
+		h.handleUserError(ctx, w, err, userID)
+		return
+	}
+
+	h.Logger.InfoContext(ctx, "User status updated successfully in handler", "id", user.ID, "isActive", user.IsActive)
+	h.API.Success(ctx, w, agent_service.UserModelToResponse(user))
+}
+
 // DeleteHandler handles HTTP requests to delete a user
 // It expects the user ID as a URL parameter
 // Returns a 200 status code with a success message on success

@@ -33,6 +33,10 @@ type UserUseCase interface {
 	// It takes a context for request-scoped values and a pointer to a User model
 	// Returns an error if the operation fails
 	UpdateUser(ctx context.Context, user *model.User) error
+	// UpdateUserStatus updates the active status of a user
+	// It takes a context for request-scoped values, user ID, and the new active status
+	// Returns an error if the operation fails
+	UpdateUserStatus(ctx context.Context, id string, isActive bool) error
 	// DeleteUser removes a user from the system
 	// It takes a context for request-scoped values and the user ID
 	// Returns an error if the operation fails
@@ -211,6 +215,39 @@ func (uc *userUseCase) UpdateUser(ctx context.Context, user *model.User) error {
 	}
 
 	uc.logger.InfoContext(ctx, "User updated successfully in usecase", "id", user.ID, "email", user.Email)
+	return nil
+}
+
+// UpdateUserStatus updates the active status of a user
+// It takes a context for request-scoped values, user ID, and the new active status
+// Returns an error if the operation fails
+func (uc *userUseCase) UpdateUserStatus(ctx context.Context, id string, isActive bool) error {
+	uc.logger.InfoContext(ctx, "Updating user status in usecase", "id", id, "isActive", isActive)
+	if id == "" {
+		uc.logger.WarnContext(ctx, "Invalid user ID for status update", "id", id)
+		return domain.ErrInvalidID
+	}
+
+	// Get existing user
+	user, err := uc.userRepo.GetByID(ctx, id)
+	if err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			uc.logger.WarnContext(ctx, "User not found for status update", "id", id)
+			return domain.ErrUserNotFound
+		}
+		uc.logger.ErrorContext(ctx, "Error getting user for status update", "id", id, "error", err)
+		return fmt.Errorf("error getting user: %w", err)
+	}
+
+	// Update the status
+	user.IsActive = isActive
+
+	if err := uc.userRepo.Update(ctx, user); err != nil {
+		uc.logger.ErrorContext(ctx, "Failed to update user status in repository", "id", user.ID, "isActive", isActive, "error", err)
+		return err
+	}
+
+	uc.logger.InfoContext(ctx, "User status updated successfully in usecase", "id", user.ID, "isActive", isActive)
 	return nil
 }
 
