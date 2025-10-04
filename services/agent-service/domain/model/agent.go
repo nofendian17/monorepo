@@ -7,6 +7,12 @@ import (
 	"gorm.io/gorm"
 )
 
+// Agent type constants
+const (
+	AgentTypeIATA     = "IATA"
+	AgentTypeSubAgent = "SUB_AGENT"
+)
+
 type Agent struct {
 	ID            string         `gorm:"type:char(26);primaryKey"`
 	AgentName     string         `gorm:"type:varchar(255);not null"`
@@ -15,7 +21,7 @@ type Agent struct {
 	Parent        *Agent         `gorm:"foreignKey:ParentAgentID;references:ID"`
 	Children      []Agent        `gorm:"foreignKey:ParentAgentID"`
 	Email         string         `gorm:"type:varchar(255);not null"`
-	IsActive      bool           `gorm:"default:true"`
+	IsActive      bool           `gorm:"default:false"`
 	CreatedAt     time.Time      `gorm:"autoCreateTime"`
 	UpdatedAt     time.Time      `gorm:"autoUpdateTime"`
 	DeletedAt     gorm.DeletedAt `gorm:"index"`

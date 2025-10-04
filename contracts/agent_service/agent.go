@@ -11,7 +11,6 @@ type CreateAgentRequest struct {
 	AgentType     string  `json:"agent_type" validate:"required,oneof=IATA SUB_AGENT"`
 	ParentAgentID *string `json:"parent_agent_id,omitempty" validate:"omitempty,ulid"`
 	Email         string  `json:"email" validate:"required,email"`
-	IsActive      *bool   `json:"is_active,omitempty"`
 }
 
 // GetAgentByIDRequest represents the request for getting an agent by ID
@@ -55,11 +54,7 @@ func CreateAgentRequestToModel(req *CreateAgentRequest) *model.Agent {
 		AgentType:     req.AgentType,
 		ParentAgentID: req.ParentAgentID,
 		Email:         req.Email,
-		IsActive:      true, // default for new agents
-	}
-
-	if req.IsActive != nil {
-		agent.IsActive = *req.IsActive
+		IsActive:      false, // default for new agents
 	}
 
 	return agent

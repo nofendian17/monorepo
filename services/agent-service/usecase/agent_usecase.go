@@ -97,7 +97,7 @@ func (uc *agentUseCase) CreateAgent(ctx context.Context, agent *model.Agent) err
 	}
 
 	// Validate agent type
-	if agent.AgentType != "IATA" && agent.AgentType != "SUB_AGENT" {
+	if agent.AgentType != model.AgentTypeIATA && agent.AgentType != model.AgentTypeSubAgent {
 		uc.logger.WarnContext(ctx, "Invalid agent type", "agentType", agent.AgentType)
 		return domain.ErrInvalidAgentType
 	}
@@ -216,7 +216,7 @@ func (uc *agentUseCase) UpdateAgent(ctx context.Context, agent *model.Agent) err
 	}
 
 	// Validate agent type
-	if agent.AgentType != "IATA" && agent.AgentType != "SUB_AGENT" {
+	if agent.AgentType != model.AgentTypeIATA && agent.AgentType != model.AgentTypeSubAgent {
 		uc.logger.WarnContext(ctx, "Invalid agent type", "agentType", agent.AgentType)
 		return domain.ErrInvalidAgentType
 	}
