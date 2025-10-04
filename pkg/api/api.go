@@ -102,7 +102,6 @@ func (a *api) buildResponse(ctx context.Context, status string, data any, meta *
 
 // writeJSONResponse writes a JSON response and handles encoding errors
 func (a *api) writeJSONResponse(w http.ResponseWriter, response Response) error {
-	w.Header().Set("Content-Type", "application/json")
 	return json.NewEncoder(w).Encode(response)
 }
 
@@ -110,6 +109,7 @@ func (a *api) writeJSONResponse(w http.ResponseWriter, response Response) error 
 func (a *api) Success(ctx context.Context, w http.ResponseWriter, data any) {
 	response := a.buildResponse(ctx, StatusSuccess, data, nil, nil)
 
+	w.Header().Set("Content-Type", "application/json")
 	if err := a.writeJSONResponse(w, response); err != nil {
 		// Log error but don't expose it to client
 		// In a real implementation, you'd want to use a proper logger here
@@ -121,6 +121,7 @@ func (a *api) Success(ctx context.Context, w http.ResponseWriter, data any) {
 func (a *api) SuccessWithCode(ctx context.Context, w http.ResponseWriter, data any) {
 	response := a.buildResponse(ctx, StatusSuccess, data, nil, nil)
 
+	w.Header().Set("Content-Type", "application/json")
 	if err := a.writeJSONResponse(w, response); err != nil {
 		// Log error but don't expose it to client
 		_ = err
@@ -131,6 +132,7 @@ func (a *api) SuccessWithCode(ctx context.Context, w http.ResponseWriter, data a
 func (a *api) SuccessWithMeta(ctx context.Context, w http.ResponseWriter, data any, meta *Meta) {
 	response := a.buildResponse(ctx, StatusSuccess, data, meta, nil)
 
+	w.Header().Set("Content-Type", "application/json")
 	if err := a.writeJSONResponse(w, response); err != nil {
 		// Log error but don't expose it to client
 		_ = err
@@ -141,6 +143,7 @@ func (a *api) SuccessWithMeta(ctx context.Context, w http.ResponseWriter, data a
 func (a *api) SuccessWithCodeAndMeta(ctx context.Context, w http.ResponseWriter, data any, meta *Meta) {
 	response := a.buildResponse(ctx, StatusSuccess, data, meta, nil)
 
+	w.Header().Set("Content-Type", "application/json")
 	if err := a.writeJSONResponse(w, response); err != nil {
 		// Log error but don't expose it to client
 		_ = err
@@ -151,6 +154,7 @@ func (a *api) SuccessWithCodeAndMeta(ctx context.Context, w http.ResponseWriter,
 func (a *api) Error(ctx context.Context, w http.ResponseWriter, statusCode int, apiErr *Error) {
 	response := a.buildResponse(ctx, StatusError, nil, nil, apiErr)
 
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)
 	if err := a.writeJSONResponse(w, response); err != nil {
 		// Log error but don't expose it to client
