@@ -1,6 +1,7 @@
 go 1.24.7
 
 use (
+	./contracts
 	./pkg
 	./services/agent-service
 )

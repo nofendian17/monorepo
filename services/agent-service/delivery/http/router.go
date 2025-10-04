@@ -28,18 +28,22 @@ func (r *Router) SetupRoutes() http.Handler {
 	// Add middleware
 	router.Use(middleware.Recoverer)
 	router.Use(middleware.RequestID)
-	router.Use(middleware.Heartbeat("/"))
+	router.Use(middleware.Heartbeat("/ping"))
 
 	// Health check endpoint
 	router.Get("/health", r.HealthHandler.HealthCheckHandler)
 
-	// User routes
-	router.Post("/users", r.Handler.CreateHandler)
-	router.Get("/users", r.Handler.ListHandler)
-	router.Get("/users/{id}", r.Handler.GetByIDHandler)
-	router.Put("/users/{id}", r.Handler.UpdateHandler)
-	router.Delete("/users/{id}", r.Handler.DeleteHandler)
-	router.Get("/users/email/{email}", r.Handler.GetByEmailHandler)
-
+	router.Route("/api/v1", func(api chi.Router) {
+		// You can add more middleware here if needed
+		// User routes
+		api.Route("/users", func(users chi.Router) {
+			users.Post("/", r.Handler.CreateHandler)
+			users.Get("/", r.Handler.ListHandler)
+			users.Get("/{id}", r.Handler.GetByIDHandler)
+			users.Put("/{id}", r.Handler.UpdateHandler)
+			users.Delete("/{id}", r.Handler.DeleteHandler)
+			users.Get("/email/{email}", r.Handler.GetByEmailHandler)
+		})
+	})
 	return router
 }

@@ -21,8 +21,10 @@ type User struct {
 	Name string `gorm:"not null"`
 	// Email is the user's email address which must be unique
 	Email string `gorm:"uniqueIndex;not null"`
+	// Password is the hashed password for the user
+	Password string `gorm:"not null"`
 	// IsActive indicates whether the user is active
-	IsActive bool `gorm:"default:true"`
+	IsActive bool `gorm:"default:false"`
 	// CreatedAt is the timestamp when the user was created
 	CreatedAt time.Time `gorm:"autoCreateTime"`
 	// UpdatedAt is the timestamp when the user was last updated

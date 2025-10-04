@@ -8,8 +8,8 @@ import (
 	"strconv"
 
 	"agent-service/domain"
-	"agent-service/domain/model"
 	"agent-service/usecase"
+	"monorepo/contracts/agent_service"
 	"monorepo/pkg/api"
 	"monorepo/pkg/logger"
 	"monorepo/pkg/validator"
@@ -42,36 +42,29 @@ func NewUserHandler(userUseCase usecase.UserUseCase, logger logger.LoggerInterfa
 // It expects a JSON payload with user data in the request body
 // Returns a 201 status code with the created user on success
 // Returns a 400 status code for invalid request data
-// Returns a 42 status code for validation errors
+// Returns a 422 status code for validation errors
 // Returns a 500 status code for internal server errors
 func (h *UserHandler) CreateHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	h.Logger.InfoContext(ctx, "Create user handler called")
 
-	var user model.User
-	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
+	var req agent_service.CreateUserRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		h.Logger.ErrorContext(ctx, "Invalid request body for user creation", "error", err)
 		h.API.BadRequest(ctx, w, "Invalid request body")
 		return
 	}
 
 	// Validate the user input using the new validator
-	validationErrors := validator.ValidateStruct(&user)
+	validationErrors := validator.ValidateStruct(&req)
 	if validationErrors != nil {
 		h.Logger.WarnContext(ctx, "Validation failed for user creation", "errors", validationErrors)
-
-		// For now, return a generic validation error
-		// In a real implementation, you'd convert the validation errors properly
-		h.API.ValidationError(ctx, w, []api.ErrorDetail{
-			{
-				Field:   "validation",
-				Message: "Input validation failed",
-			},
-		})
+		h.API.ValidationError(ctx, w, h.convertValidationErrors(validationErrors))
 		return
 	}
 
-	if err := h.UserUseCase.CreateUser(ctx, &user); err != nil {
+	user := agent_service.CreateUserRequestToModel(&req)
+	if err := h.UserUseCase.CreateUser(ctx, user); err != nil {
 		switch {
 		case err.Error() == domain.ErrEmailRequired.Message:
 			h.API.BadRequest(ctx, w, err.Error())
@@ -88,18 +81,7 @@ func (h *UserHandler) CreateHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.Logger.InfoContext(ctx, "User created successfully in handler", "id", user.ID, "email", user.Email)
-	h.API.Success(ctx, w, user)
-}
-
-// parseULID parses a string ID parameter to ULID string, returning appropriate error responses
-func (h *UserHandler) parseULID(ctx context.Context, w http.ResponseWriter, r *http.Request, paramName string) (string, bool) {
-	idStr := chi.URLParam(r, paramName)
-	if idStr == "" {
-		h.Logger.ErrorContext(ctx, "User ID parameter is required", "param", paramName)
-		h.API.BadRequest(ctx, w, "User ID parameter is required")
-		return "", false
-	}
-	return idStr, true
+	h.API.Success(ctx, w, agent_service.UserModelToResponse(user))
 }
 
 // handleUserError handles user-related errors consistently
@@ -132,38 +114,41 @@ func (h *UserHandler) GetByIDHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	h.Logger.InfoContext(ctx, "Get user by ID handler called")
 
-	id, ok := h.parseULID(ctx, w, r, "id")
-	if !ok {
+	req := agent_service.GetUserByIDRequest{ID: chi.URLParam(r, "id")}
+	if err := validator.ValidateStruct(&req); err != nil {
+		h.Logger.WarnContext(ctx, "Validation failed for get user by ID", "errors", err)
+		h.API.ValidationError(ctx, w, h.convertValidationErrors(err))
 		return
 	}
 
-	user, err := h.UserUseCase.GetUserByID(ctx, id)
+	user, err := h.UserUseCase.GetUserByID(ctx, req.ID)
 	if err != nil {
-		h.handleUserError(ctx, w, err, id)
+		h.handleUserError(ctx, w, err, req.ID)
 		return
 	}
 
 	h.Logger.InfoContext(ctx, "User retrieved by ID in handler", "id", user.ID, "email", user.Email)
-	h.API.Success(ctx, w, user)
+	h.API.Success(ctx, w, agent_service.UserModelToResponse(user))
 }
 
 // GetByEmailHandler handles HTTP requests to retrieve a user by their email
 // It expects the email as a URL parameter
-// Returns a 20 status code with the user data on success
+// Returns a 200 status code with the user data on success
 // Returns a 400 status code if the email parameter is missing
 // Returns a 404 status code if the user is not found
 // Returns a 500 status code for internal server errors
 func (h *UserHandler) GetByEmailHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	h.Logger.InfoContext(ctx, "Get user by email handler called")
-	email := chi.URLParam(r, "email")
-	if email == "" {
-		h.Logger.WarnContext(ctx, "Email parameter is required")
-		h.API.BadRequest(ctx, w, "Email parameter is required")
+
+	req := agent_service.GetUserByEmailRequest{Email: chi.URLParam(r, "email")}
+	if err := validator.ValidateStruct(&req); err != nil {
+		h.Logger.WarnContext(ctx, "Validation failed for get user by email", "errors", err)
+		h.API.ValidationError(ctx, w, h.convertValidationErrors(err))
 		return
 	}
 
-	user, err := h.UserUseCase.GetUserByEmail(ctx, email)
+	user, err := h.UserUseCase.GetUserByEmail(ctx, req.Email)
 	if err != nil {
 		switch {
 		case err.Error() == domain.ErrUserNotFound.Message:
@@ -171,20 +156,20 @@ func (h *UserHandler) GetByEmailHandler(w http.ResponseWriter, r *http.Request) 
 		case err.Error() == domain.ErrEmailRequired.Message:
 			h.API.BadRequest(ctx, w, err.Error())
 		default:
-			h.Logger.ErrorContext(ctx, "Unexpected error getting user by email", "email", email, "error", err)
+			h.Logger.ErrorContext(ctx, "Unexpected error getting user by email", "email", req.Email, "error", err)
 			h.API.InternalServerError(ctx, w, "Failed to retrieve user")
 		}
 		return
 	}
 
 	h.Logger.InfoContext(ctx, "User retrieved by email in handler", "id", user.ID, "email", user.Email)
-	h.API.Success(ctx, w, user)
+	h.API.Success(ctx, w, agent_service.UserModelToResponse(user))
 }
 
 // UpdateHandler handles HTTP requests to update an existing user
 // It expects the user ID as a URL parameter and user data in the request body
 // Returns a 200 status code with the updated user on success
-// Returns a 40 status code for invalid ID format or request data
+// Returns a 400 status code for invalid ID format or request data
 // Returns a 422 status code for validation errors
 // Returns a 404 status code if the user is not found
 // Returns a 500 status code for internal server errors
@@ -192,65 +177,80 @@ func (h *UserHandler) UpdateHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	h.Logger.InfoContext(ctx, "Update user handler called")
 
-	id, ok := h.parseULID(ctx, w, r, "id")
-	if !ok {
-		return
-	}
-
-	var user model.User
-	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
-		h.Logger.ErrorContext(ctx, "Invalid request body for user update", "id", id, "error", err)
+	var req agent_service.UpdateUserRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		h.Logger.ErrorContext(ctx, "Invalid request body for user update", "error", err)
 		h.API.BadRequest(ctx, w, "Invalid request body")
 		return
 	}
-	user.ID = id
+
+	// Set ID from URL parameter
+	req.ID = chi.URLParam(r, "id")
 
 	// Validate the user input using the new validator
-	validationErrors := validator.ValidateStruct(&user)
+	validationErrors := validator.ValidateStruct(&req)
 	if validationErrors != nil {
-		h.Logger.WarnContext(ctx, "Validation failed for user update", "id", user.ID, "errors", validationErrors)
-
-		// For now, return a generic validation error
-		// In a real implementation, you'd convert the validation errors properly
-		h.API.ValidationError(ctx, w, []api.ErrorDetail{
-			{
-				Field:   "validation",
-				Message: "Input validation failed",
-			},
-		})
+		h.Logger.WarnContext(ctx, "Validation failed for user update", "id", req.ID, "errors", validationErrors)
+		h.API.ValidationError(ctx, w, h.convertValidationErrors(validationErrors))
 		return
 	}
 
-	if err := h.UserUseCase.UpdateUser(ctx, &user); err != nil {
-		h.handleUserError(ctx, w, err, user.ID)
+	// Get existing user
+	existingUser, err := h.UserUseCase.GetUserByID(ctx, req.ID)
+	if err != nil {
+		h.handleUserError(ctx, w, err, req.ID)
 		return
 	}
 
-	h.Logger.InfoContext(ctx, "User updated successfully in handler", "id", user.ID, "email", user.Email)
-	h.API.Success(ctx, w, user)
+	// Apply updates
+	if req.AgentID != nil {
+		existingUser.AgentID = req.AgentID
+	}
+	if req.Name != "" {
+		existingUser.Name = req.Name
+	}
+	if req.Email != "" {
+		existingUser.Email = req.Email
+	}
+	if req.Password != "" {
+		existingUser.Password = req.Password // Plain password, will be hashed in usecase
+	}
+	if req.IsActive != nil {
+		existingUser.IsActive = *req.IsActive
+	}
+
+	if err := h.UserUseCase.UpdateUser(ctx, existingUser); err != nil {
+		h.handleUserError(ctx, w, err, existingUser.ID)
+		return
+	}
+
+	h.Logger.InfoContext(ctx, "User updated successfully in handler", "id", existingUser.ID, "email", existingUser.Email)
+	h.API.Success(ctx, w, agent_service.UserModelToResponse(existingUser))
 }
 
 // DeleteHandler handles HTTP requests to delete a user
 // It expects the user ID as a URL parameter
-// Returns a 20 status code with a success message on success
-// Returns a 40 status code for invalid ID format
+// Returns a 200 status code with a success message on success
+// Returns a 400 status code for invalid ID format
 // Returns a 404 status code if the user is not found
 // Returns a 500 status code for internal server errors
 func (h *UserHandler) DeleteHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	h.Logger.InfoContext(ctx, "Delete user handler called")
 
-	id, ok := h.parseULID(ctx, w, r, "id")
-	if !ok {
+	req := agent_service.DeleteUserRequest{ID: chi.URLParam(r, "id")}
+	if err := validator.ValidateStruct(&req); err != nil {
+		h.Logger.WarnContext(ctx, "Validation failed for delete user", "errors", err)
+		h.API.ValidationError(ctx, w, h.convertValidationErrors(err))
 		return
 	}
 
-	if err := h.UserUseCase.DeleteUser(ctx, id); err != nil {
-		h.handleUserError(ctx, w, err, id)
+	if err := h.UserUseCase.DeleteUser(ctx, req.ID); err != nil {
+		h.handleUserError(ctx, w, err, req.ID)
 		return
 	}
 
-	h.Logger.InfoContext(ctx, "User deleted successfully in handler", "id", id)
+	h.Logger.InfoContext(ctx, "User deleted successfully in handler", "id", req.ID)
 	h.API.Success(ctx, w, map[string]string{"message": "User deleted successfully"})
 }
 
@@ -334,5 +334,17 @@ func (h *UserHandler) ListHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.Logger.InfoContext(ctx, "Users listed successfully in handler", "count", len(users), "offset", offset, "limit", limit, "total", total)
-	h.API.SuccessWithMeta(ctx, w, users, meta)
+	h.API.SuccessWithMeta(ctx, w, agent_service.UserModelsToResponses(users), meta)
+}
+
+// convertValidationErrors converts validator errors to API error details
+func (h *UserHandler) convertValidationErrors(validationErrors map[string]string) []api.ErrorDetail {
+	details := make([]api.ErrorDetail, 0, len(validationErrors))
+	for field, message := range validationErrors {
+		details = append(details, api.ErrorDetail{
+			Field:   field,
+			Message: message,
+		})
+	}
+	return details
 }

@@ -10,6 +10,8 @@ import (
 	"agent-service/domain/model"
 	"agent-service/domain/repository"
 	"monorepo/pkg/logger"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 // UserUseCase defines the interface for user-related business operations
@@ -57,6 +59,15 @@ type userUseCase struct {
 	logger logger.LoggerInterface
 }
 
+// hashPassword hashes a plain password using bcrypt
+func hashPassword(password string) (string, error) {
+	if password == "" {
+		return "", nil
+	}
+	hashed, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	return string(hashed), err
+}
+
 // NewUserUseCase creates a new instance of userUseCase
 // It takes a User repository implementation and a logger instance
 // Returns an implementation of the UserUseCase interface
@@ -88,6 +99,16 @@ func (uc *userUseCase) CreateUser(ctx context.Context, user *model.User) error {
 	if existingUser != nil {
 		uc.logger.WarnContext(ctx, "User with email already exists", "email", user.Email)
 		return domain.ErrEmailAlreadyExists
+	}
+
+	// Hash the password before saving
+	if user.Password != "" {
+		hashedPassword, err := hashPassword(user.Password)
+		if err != nil {
+			uc.logger.ErrorContext(ctx, "Failed to hash password", "error", err)
+			return fmt.Errorf("failed to hash password: %w", err)
+		}
+		user.Password = hashedPassword
 	}
 
 	if err := uc.userRepo.Create(ctx, user); err != nil {
@@ -172,6 +193,16 @@ func (uc *userUseCase) UpdateUser(ctx context.Context, user *model.User) error {
 	if existingUser != nil && existingUser.ID != user.ID {
 		uc.logger.WarnContext(ctx, "Email already exists for another user", "email", user.Email, "existing_id", existingUser.ID, "update_id", user.ID)
 		return domain.ErrEmailAlreadyExists
+	}
+
+	// Hash the password if it's provided
+	if user.Password != "" {
+		hashedPassword, err := hashPassword(user.Password)
+		if err != nil {
+			uc.logger.ErrorContext(ctx, "Failed to hash password during update", "id", user.ID, "error", err)
+			return fmt.Errorf("failed to hash password: %w", err)
+		}
+		user.Password = hashedPassword
 	}
 
 	if err := uc.userRepo.Update(ctx, user); err != nil {
