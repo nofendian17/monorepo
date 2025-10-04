@@ -9,7 +9,7 @@ import (
 type CreateAgentRequest struct {
 	AgentName     string  `json:"agent_name" validate:"required,min=1,max=255"`
 	AgentType     string  `json:"agent_type" validate:"required,oneof=IATA SUB_AGENT"`
-	ParentAgentID *string `json:"parent_agent_id,omitempty" validate:"omitempty,ulid"`
+	ParentAgentID *string `json:"parent_agent_id,omitempty" validate:"required_if=AgentType SUB_AGENT,ulid"`
 	Email         string  `json:"email" validate:"required,email"`
 }
 
@@ -28,7 +28,7 @@ type UpdateAgentRequest struct {
 	ID            string  `json:"id" validate:"required,ulid"`
 	AgentName     string  `json:"agent_name,omitempty" validate:"omitempty,min=1,max=255"`
 	AgentType     string  `json:"agent_type,omitempty" validate:"omitempty,oneof=IATA SUB_AGENT"`
-	ParentAgentID *string `json:"parent_agent_id,omitempty" validate:"omitempty,ulid"`
+	ParentAgentID *string `json:"parent_agent_id,omitempty" validate:"required_if=AgentType SUB_AGENT,ulid"`
 	Email         string  `json:"email,omitempty" validate:"omitempty,email"`
 	IsActive      *bool   `json:"is_active,omitempty"`
 }

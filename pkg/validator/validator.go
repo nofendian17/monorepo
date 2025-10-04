@@ -78,6 +78,8 @@ func formatValidationError(err validator.FieldError, fieldName string) string {
 		return fieldName + " must be greater than or equal to " + err.Param()
 	case "oneof":
 		return fieldName + " must be one of the following: " + err.Param()
+	case "required_if":
+		return fieldName + " is required when " + err.Param()
 	default:
 		return fieldName + " is invalid"
 	}
