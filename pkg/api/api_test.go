@@ -36,6 +36,25 @@ func TestApi_Success(t *testing.T) {
 	assert.NotNil(t, response.Data, "Expected data in response")
 }
 
+func TestApi_Created(t *testing.T) {
+	api := New()
+	w := httptest.NewRecorder()
+	ctx := context.Background()
+	data := map[string]string{"key": "value"}
+
+	api.Created(ctx, w, data)
+
+	assert.Equal(t, http.StatusCreated, w.Code, "Expected status Created")
+	assert.Equal(t, "application/json", w.Header().Get("Content-Type"), "Expected Content-Type application/json")
+
+	var response Response
+	err := json.NewDecoder(w.Body).Decode(&response)
+	require.NoError(t, err, "Failed to decode response")
+
+	assert.Equal(t, StatusSuccess, response.Status, "Expected status success")
+	assert.NotNil(t, response.Data, "Expected data in response")
+}
+
 func TestApi_Error(t *testing.T) {
 	api := New()
 	w := httptest.NewRecorder()

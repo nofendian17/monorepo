@@ -81,7 +81,7 @@ func (h *UserHandler) CreateHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.Logger.InfoContext(ctx, "User created successfully in handler", "id", user.ID, "email", user.Email)
-	h.API.Success(ctx, w, agent_service.UserModelToResponse(user))
+	h.API.Created(ctx, w, agent_service.UserModelToResponse(user))
 }
 
 // handleUserError handles user-related errors consistently

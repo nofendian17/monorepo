@@ -9,10 +9,11 @@ import (
 
 // CreateUserRequest represents the request payload for creating a new user
 type CreateUserRequest struct {
-	AgentID  *string `json:"agent_id,omitempty" validate:"omitempty,ulid"`
-	Name     string  `json:"name" validate:"required,min=1,max=255"`
-	Email    string  `json:"email" validate:"required,email"`
-	Password string  `json:"password" validate:"required,min=8"`
+	AgentID         *string `json:"agent_id,omitempty" validate:"omitempty,ulid"`
+	Name            string  `json:"name" validate:"required,min=1,max=255"`
+	Email           string  `json:"email" validate:"required,email"`
+	Password        string  `json:"password" validate:"required,min=8"`
+	PasswordConfirm string  `json:"password_confirm" validate:"required,min=8,eqfield=Password"`
 }
 
 // UserResponse represents the response payload for a user
@@ -56,12 +57,13 @@ type DeleteUserRequest struct {
 
 // UpdateUserRequest represents the request payload for updating an existing user
 type UpdateUserRequest struct {
-	ID       string  `json:"id" validate:"required,ulid"`
-	AgentID  *string `json:"agent_id,omitempty" validate:"omitempty,ulid"`
-	Name     string  `json:"name,omitempty" validate:"omitempty,min=1,max=255"`
-	Email    string  `json:"email,omitempty" validate:"omitempty,email"`
-	Password string  `json:"password,omitempty" validate:"omitempty,min=8"`
-	IsActive *bool   `json:"is_active,omitempty"`
+	ID              string  `json:"id" validate:"required,ulid"`
+	AgentID         *string `json:"agent_id,omitempty" validate:"omitempty,ulid"`
+	Name            string  `json:"name,omitempty" validate:"omitempty,min=1,max=255"`
+	Email           string  `json:"email,omitempty" validate:"omitempty,email"`
+	Password        string  `json:"password,omitempty" validate:"omitempty,min=8"`
+	PasswordConfirm string  `json:"password_confirm,omitempty" validate:"omitempty,min=8,eqfield=Password"`
+	IsActive        *bool   `json:"is_active,omitempty"`
 }
 type UsersListResponse struct {
 	Users []UserResponse `json:"users"`

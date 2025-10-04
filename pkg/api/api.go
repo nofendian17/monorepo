@@ -53,6 +53,7 @@ type ErrorDetail struct {
 // Api interface defines methods for standard API responses
 type Api interface {
 	Success(ctx context.Context, w http.ResponseWriter, data any)
+	Created(ctx context.Context, w http.ResponseWriter, data any)
 	Error(ctx context.Context, w http.ResponseWriter, statusCode int, apiErr *Error)
 	SuccessWithMeta(ctx context.Context, w http.ResponseWriter, data any, meta *Meta)
 	SuccessWithCode(ctx context.Context, w http.ResponseWriter, data any)
@@ -113,6 +114,18 @@ func (a *api) Success(ctx context.Context, w http.ResponseWriter, data any) {
 	if err := a.writeJSONResponse(w, response); err != nil {
 		// Log error but don't expose it to client
 		// In a real implementation, you'd want to use a proper logger here
+		_ = err
+	}
+}
+
+// Created sends a 201 Created response with data
+func (a *api) Created(ctx context.Context, w http.ResponseWriter, data any) {
+	response := a.buildResponse(ctx, StatusSuccess, data, nil, nil)
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	if err := a.writeJSONResponse(w, response); err != nil {
+		// Log error but don't expose it to client
 		_ = err
 	}
 }
