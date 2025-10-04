@@ -47,7 +47,8 @@ func (r *Router) SetupRoutes() http.Handler {
 			auth.Post("/login", r.AuthHandler.LoginHandler)
 			auth.Post("/refresh", r.AuthHandler.RefreshHandler)
 			// Protected auth routes
-			auth.With(JWTMiddleware(r.JWTClient, r.AppLogger)).Get("/profile", r.AuthHandler.ProfileHandler)
+			auth.With(JWTMiddleware(r.JWTClient, r.AppLogger, r.AuthHandler.API)).
+				Get("/profile", r.AuthHandler.ProfileHandler)
 		})
 		// User routes
 		api.Route("/users", func(users chi.Router) {

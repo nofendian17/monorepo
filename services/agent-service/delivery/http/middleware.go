@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	"monorepo/pkg/api"
 	"monorepo/pkg/jwt"
 	"monorepo/pkg/logger"
 
@@ -38,7 +39,7 @@ func LoggingMiddleware(logger logger.LoggerInterface) func(http.Handler) http.Ha
 // JWTMiddleware validates JWT tokens for protected routes
 // It extracts the Authorization header, validates the token, and adds user claims to the request context
 // Returns a 401 status code for missing or invalid tokens
-func JWTMiddleware(jwtClient jwt.JWTClient, logger logger.LoggerInterface) func(http.Handler) http.Handler {
+func JWTMiddleware(jwtClient jwt.JWTClient, logger logger.LoggerInterface, apiClient api.Api) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ctx := r.Context()
@@ -47,7 +48,7 @@ func JWTMiddleware(jwtClient jwt.JWTClient, logger logger.LoggerInterface) func(
 			authHeader := r.Header.Get("Authorization")
 			if authHeader == "" {
 				logger.WarnContext(ctx, "Missing Authorization header")
-				http.Error(w, "Missing Authorization header", http.StatusUnauthorized)
+				apiClient.Unauthorized(ctx, w, "Missing Authorization header")
 				return
 			}
 
@@ -55,7 +56,7 @@ func JWTMiddleware(jwtClient jwt.JWTClient, logger logger.LoggerInterface) func(
 			const bearerPrefix = "Bearer "
 			if len(authHeader) <= len(bearerPrefix) || authHeader[:len(bearerPrefix)] != bearerPrefix {
 				logger.WarnContext(ctx, "Invalid Authorization header format")
-				http.Error(w, "Invalid Authorization header format", http.StatusUnauthorized)
+				apiClient.Unauthorized(ctx, w, "Invalid Authorization header format")
 				return
 			}
 
@@ -65,7 +66,7 @@ func JWTMiddleware(jwtClient jwt.JWTClient, logger logger.LoggerInterface) func(
 			claims, err := jwtClient.ValidateAccessToken(tokenString)
 			if err != nil {
 				logger.WarnContext(ctx, "Invalid access token", "error", err)
-				http.Error(w, "Invalid access token", http.StatusUnauthorized)
+				apiClient.Unauthorized(ctx, w, "Invalid access token")
 				return
 			}
 
