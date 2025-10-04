@@ -341,11 +341,6 @@ func (h *UserHandler) ListHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Pagination calculation
-	if limit <= 0 {
-		limit = 10
-	}
-
 	if total < 0 {
 		total = 0
 	}
