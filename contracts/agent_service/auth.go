@@ -22,6 +22,8 @@ type RefreshTokenRequest struct {
 
 // RefreshTokenResponse represents the response payload for token refresh
 type RefreshTokenResponse struct {
-	AccessToken       string `json:"access_token"`
-	AccessTokenExpire int64  `json:"access_token_expire"`
+	AccessToken        string `json:"access_token"`
+	RefreshToken       string `json:"refresh_token"`
+	AccessTokenExpire  int64  `json:"access_token_expire"`
+	RefreshTokenExpire int64  `json:"refresh_token_expire"`
 }

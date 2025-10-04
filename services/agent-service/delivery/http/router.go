@@ -1,6 +1,7 @@
 package http
 
 import (
+	"monorepo/pkg/jwt"
 	"monorepo/pkg/logger"
 	"net/http"
 
@@ -13,15 +14,17 @@ type Router struct {
 	AgentHandler  *AgentHandler
 	HealthHandler *HealthHandler
 	AuthHandler   *AuthHandler
+	JWTClient     jwt.JWTClient
 	AppLogger     logger.LoggerInterface
 }
 
-func NewRouter(userHandler *UserHandler, agentHandler *AgentHandler, healthHandler *HealthHandler, authHandler *AuthHandler, appLogger logger.LoggerInterface) *Router {
+func NewRouter(userHandler *UserHandler, agentHandler *AgentHandler, healthHandler *HealthHandler, authHandler *AuthHandler, jwtClient jwt.JWTClient, appLogger logger.LoggerInterface) *Router {
 	return &Router{
 		Handler:       userHandler,
 		AgentHandler:  agentHandler,
 		HealthHandler: healthHandler,
 		AuthHandler:   authHandler,
+		JWTClient:     jwtClient,
 		AppLogger:     appLogger,
 	}
 }
@@ -43,6 +46,8 @@ func (r *Router) SetupRoutes() http.Handler {
 		api.Route("/auth", func(auth chi.Router) {
 			auth.Post("/login", r.AuthHandler.LoginHandler)
 			auth.Post("/refresh", r.AuthHandler.RefreshHandler)
+			// Protected auth routes
+			auth.With(JWTMiddleware(r.JWTClient, r.AppLogger)).Get("/profile", r.AuthHandler.ProfileHandler)
 		})
 		// User routes
 		api.Route("/users", func(users chi.Router) {

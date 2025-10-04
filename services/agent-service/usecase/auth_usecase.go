@@ -22,10 +22,16 @@ type AuthUseCase interface {
 	// It takes a context for request-scoped values, a LoginRequest, user agent, and IP address
 	// Returns a LoginResponse with tokens, or an error if authentication fails
 	Login(ctx context.Context, req agent_service.LoginRequest, userAgent, ipAddress string) (*agent_service.LoginResponse, error)
-	// Refresh generates a new access token using a valid refresh token
+	// Refresh generates new access and refresh tokens using a valid refresh token
+	// It implements fail-fast token rotation: the old refresh token must be successfully revoked
+	// before new tokens are issued to prevent having both old and new tokens valid simultaneously
 	// It takes a context for request-scoped values and a RefreshTokenRequest
-	// Returns a RefreshTokenResponse with new access token, or an error if refresh fails
+	// Returns a RefreshTokenResponse with new tokens, or an error if refresh fails
 	Refresh(ctx context.Context, req agent_service.RefreshTokenRequest) (*agent_service.RefreshTokenResponse, error)
+	// Profile retrieves the authenticated user's profile information
+	// It takes a context for request-scoped values with user claims
+	// Returns a UserResponse with user profile data, or an error if retrieval fails
+	Profile(ctx context.Context) (*agent_service.UserResponse, error)
 }
 
 // authUseCase implements the AuthUseCase interface
@@ -149,9 +155,11 @@ func (uc *authUseCase) Login(ctx context.Context, req agent_service.LoginRequest
 	}, nil
 }
 
-// Refresh generates a new access token using a valid refresh token
+// Refresh generates new access and refresh tokens using a valid refresh token
+// It implements fail-fast token rotation: the old refresh token must be successfully revoked
+// before new tokens are issued to prevent having both old and new tokens valid simultaneously
 // It takes a context for request-scoped values and a RefreshTokenRequest
-// Returns a RefreshTokenResponse with new access token, or an error if refresh fails
+// Returns a RefreshTokenResponse with new tokens, or an error if refresh fails
 func (uc *authUseCase) Refresh(ctx context.Context, req agent_service.RefreshTokenRequest) (*agent_service.RefreshTokenResponse, error) {
 	uc.logger.InfoContext(ctx, "Refresh token attempt")
 
@@ -175,11 +183,23 @@ func (uc *authUseCase) Refresh(ctx context.Context, req agent_service.RefreshTok
 		return nil, errors.New("user account is not active")
 	}
 
-	// Generate new access token
-	var accessToken string
+	// Revoke the old refresh token (only in stateful mode)
+	// This is a fail-fast approach: if revocation fails, the entire refresh operation fails
+	// to prevent having both old and new tokens valid simultaneously
 	if uc.jwtClient.IsStateful() {
-		// Stateful mode: Generate access token with session tracking in Redis
-		accessToken, _, _, err = uc.jwtClient.GenerateTokensWithSession(
+		err = uc.jwtClient.RevokeRefreshToken(claims.UserID, claims.ID)
+		if err != nil {
+			uc.logger.ErrorContext(ctx, "Failed to revoke old refresh token - aborting refresh to maintain security", "userID", claims.UserID, "tokenID", claims.ID, "error", err)
+			return nil, fmt.Errorf("failed to revoke old refresh token: %w", err)
+		}
+		uc.logger.InfoContext(ctx, "Old refresh token revoked successfully", "userID", claims.UserID, "tokenID", claims.ID)
+	}
+
+	// Generate new tokens
+	var accessToken, refreshToken string
+	if uc.jwtClient.IsStateful() {
+		// Stateful mode: Generate tokens with session tracking in Redis
+		accessToken, refreshToken, _, err = uc.jwtClient.GenerateTokensWithSession(
 			ctx, user.ID, claims.AgentID, claims.AgentType, "", "",
 		)
 		if err != nil {
@@ -188,24 +208,67 @@ func (uc *authUseCase) Refresh(ctx context.Context, req agent_service.RefreshTok
 		}
 		uc.logger.InfoContext(ctx, "Token refresh successful (stateful)", "userID", user.ID)
 	} else {
-		// Stateless mode: Generate access token without session tracking
-		accessToken, err = uc.jwtClient.GenerateAccessToken(user.ID, "", "")
+		// Stateless mode: Generate tokens without session tracking
+		accessToken, err = uc.jwtClient.GenerateAccessToken(user.ID, claims.AgentID, claims.AgentType)
 		if err != nil {
 			uc.logger.ErrorContext(ctx, "Error generating new access token", "userID", user.ID, "error", err)
 			return nil, fmt.Errorf("error generating new access token: %w", err)
 		}
+
+		refreshToken, err = uc.jwtClient.GenerateRefreshToken(user.ID, claims.AgentID, claims.AgentType)
+		if err != nil {
+			uc.logger.ErrorContext(ctx, "Error generating new refresh token", "userID", user.ID, "error", err)
+			return nil, fmt.Errorf("error generating new refresh token: %w", err)
+		}
+
 		uc.logger.InfoContext(ctx, "Token refresh successful (stateless)", "userID", user.ID)
 	}
 
-	// Get new access token expiration time
+	// Get token expiration times
 	accessTokenExpire, err := uc.jwtClient.GetTokenExpiration(accessToken)
 	if err != nil {
 		uc.logger.ErrorContext(ctx, "Error getting new access token expiration", "userID", user.ID, "error", err)
 		return nil, fmt.Errorf("error getting new access token expiration: %w", err)
 	}
 
+	refreshTokenExpire, err := uc.jwtClient.GetTokenExpiration(refreshToken)
+	if err != nil {
+		uc.logger.ErrorContext(ctx, "Error getting new refresh token expiration", "userID", user.ID, "error", err)
+		return nil, fmt.Errorf("error getting new refresh token expiration: %w", err)
+	}
+
 	return &agent_service.RefreshTokenResponse{
-		AccessToken:       accessToken,
-		AccessTokenExpire: int64(time.Until(accessTokenExpire).Seconds()),
+		AccessToken:        accessToken,
+		RefreshToken:       refreshToken,
+		AccessTokenExpire:  int64(time.Until(accessTokenExpire).Seconds()),
+		RefreshTokenExpire: int64(time.Until(refreshTokenExpire).Seconds()),
 	}, nil
+}
+
+// Profile retrieves the authenticated user's profile information
+// It extracts the user ID from the context and fetches the user data
+// Returns a UserResponse with user profile data, or an error if retrieval fails
+func (uc *authUseCase) Profile(ctx context.Context) (*agent_service.UserResponse, error) {
+	uc.logger.InfoContext(ctx, "Profile request")
+
+	// Extract user ID from context (set by JWT middleware)
+	userID, ok := ctx.Value("user_id").(string)
+	if !ok || userID == "" {
+		uc.logger.WarnContext(ctx, "User ID not found in context")
+		return nil, errors.New("unauthorized: user ID not found")
+	}
+
+	// Get user by ID
+	user, err := uc.userRepo.GetByID(ctx, userID)
+	if err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			uc.logger.WarnContext(ctx, "User not found", "userID", userID)
+			return nil, domain.ErrNotFound
+		}
+		uc.logger.ErrorContext(ctx, "Error retrieving user", "userID", userID, "error", err)
+		return nil, fmt.Errorf("error retrieving user: %w", err)
+	}
+
+	uc.logger.InfoContext(ctx, "Profile retrieved successfully", "userID", userID)
+	return agent_service.UserModelToResponse(user), nil
 }

@@ -132,7 +132,7 @@ func main() {
 	authHandler := httpDelivery.NewAuthHandler(authUsecase, appLogger)
 
 	// Initialize router
-	router := httpDelivery.NewRouter(userHandler, agentHandler, healthHandler, authHandler, appLogger)
+	router := httpDelivery.NewRouter(userHandler, agentHandler, healthHandler, authHandler, jwtClient, appLogger)
 
 	// Setup routes
 	httpHandler := router.SetupRoutes()

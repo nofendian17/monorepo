@@ -138,6 +138,49 @@ func (h *AuthHandler) RefreshHandler(w http.ResponseWriter, r *http.Request) {
 	h.API.Success(ctx, w, response)
 }
 
+// ProfileHandler handles HTTP requests for authenticated user profile
+// It retrieves the user profile information from the authenticated user's context
+// Returns a 200 status code with user profile data on success
+// Returns a 401 status code for unauthorized access
+// Returns a 404 status code if user is not found
+// Returns a 500 status code for internal server errors
+func (h *AuthHandler) ProfileHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	h.Logger.InfoContext(ctx, "Profile handler called")
+
+	// Call usecase (user ID is extracted from JWT middleware)
+	response, err := h.AuthUseCase.Profile(ctx)
+	if err != nil {
+		h.Logger.WarnContext(ctx, "Profile retrieval failed", "error", err)
+
+		// Check if it's a domain error with status code
+		if appErr, ok := err.(*domain.AppError); ok {
+			switch appErr.Code {
+			case 401:
+				h.API.Unauthorized(ctx, w, appErr.Message)
+			case 404:
+				h.API.NotFound(ctx, w, appErr.Message)
+			default:
+				h.API.BadRequest(ctx, w, appErr.Message)
+			}
+			return
+		}
+
+		// Check for specific error messages
+		if err.Error() == "unauthorized: user ID not found" {
+			h.API.Unauthorized(ctx, w, "Unauthorized")
+			return
+		}
+
+		// Generic error
+		h.API.InternalServerError(ctx, w, "Profile retrieval failed")
+		return
+	}
+
+	h.Logger.InfoContext(ctx, "Profile retrieved successfully")
+	h.API.Success(ctx, w, response)
+}
+
 // convertValidationErrors converts validator errors to API error details
 func (h *AuthHandler) convertValidationErrors(validationErrors map[string]string) []api.ErrorDetail {
 	details := make([]api.ErrorDetail, 0, len(validationErrors))
