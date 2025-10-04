@@ -62,6 +62,7 @@ type Api interface {
 	Unauthorized(ctx context.Context, w http.ResponseWriter, message string)
 	Forbidden(ctx context.Context, w http.ResponseWriter, message string)
 	NotFound(ctx context.Context, w http.ResponseWriter, message string)
+	Conflict(ctx context.Context, w http.ResponseWriter, message string)
 	InternalServerError(ctx context.Context, w http.ResponseWriter, message string)
 	ValidationError(ctx context.Context, w http.ResponseWriter, details []ErrorDetail)
 }
@@ -213,6 +214,16 @@ func (a *api) NotFound(ctx context.Context, w http.ResponseWriter, message strin
 	}
 
 	a.Error(ctx, w, http.StatusNotFound, apiErr)
+}
+
+// Conflict sends a 409 Conflict response
+func (a *api) Conflict(ctx context.Context, w http.ResponseWriter, message string) {
+	apiErr := &Error{
+		Code:    "CONFLICT",
+		Message: message,
+	}
+
+	a.Error(ctx, w, http.StatusConflict, apiErr)
 }
 
 // InternalServerError sends a 500 Internal Server Error response

@@ -69,10 +69,7 @@ func (h *UserHandler) CreateHandler(w http.ResponseWriter, r *http.Request) {
 		case err.Error() == domain.ErrEmailRequired.Message:
 			h.API.BadRequest(ctx, w, err.Error())
 		case err.Error() == domain.ErrEmailAlreadyExists.Message:
-			h.API.Error(ctx, w, domain.ErrEmailAlreadyExists.Code, &api.Error{
-				Code:    "EMAIL_EXISTS",
-				Message: err.Error(),
-			})
+			h.API.Conflict(ctx, w, domain.ErrEmailAlreadyExists.Message)
 		default:
 			h.Logger.ErrorContext(ctx, "Unexpected error during user creation", "email", user.Email, "error", err)
 			h.API.InternalServerError(ctx, w, "Failed to create user")
@@ -94,10 +91,7 @@ func (h *UserHandler) handleUserError(ctx context.Context, w http.ResponseWriter
 	case err.Error() == domain.ErrEmailRequired.Message:
 		h.API.BadRequest(ctx, w, err.Error())
 	case err.Error() == domain.ErrEmailAlreadyExists.Message:
-		h.API.Error(ctx, w, domain.ErrEmailAlreadyExists.Code, &api.Error{
-			Code:    "EMAIL_EXISTS",
-			Message: err.Error(),
-		})
+		h.API.BadRequest(ctx, w, domain.ErrEmailAlreadyExists.Message)
 	default:
 		h.Logger.ErrorContext(ctx, "Unexpected error", "id", id, "error", err)
 		h.API.InternalServerError(ctx, w, "An unexpected error occurred")

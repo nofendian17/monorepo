@@ -141,6 +141,22 @@ func TestApi_NotFound(t *testing.T) {
 	assert.Equal(t, "NOT_FOUND", response.Error.Code, "Expected error code NOT_FOUND")
 }
 
+func TestApi_Conflict(t *testing.T) {
+	api := New()
+	w := httptest.NewRecorder()
+	ctx := context.Background()
+
+	api.Conflict(ctx, w, "Conflict message")
+
+	assert.Equal(t, http.StatusConflict, w.Code, "Expected status Conflict")
+
+	var response Response
+	err := json.NewDecoder(w.Body).Decode(&response)
+	require.NoError(t, err, "Failed to decode response")
+
+	assert.Equal(t, "CONFLICT", response.Error.Code, "Expected error code CONFLICT")
+}
+
 func TestApi_InternalServerError(t *testing.T) {
 	api := New()
 	w := httptest.NewRecorder()
