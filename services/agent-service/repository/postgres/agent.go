@@ -62,24 +62,6 @@ func (r *agentRepository) GetByID(ctx context.Context, id string) (*model.Agent,
 	return &agent, nil
 }
 
-// GetByEmail retrieves an agent by their email address
-// It takes a context for request-scoped values and the email address
-// Returns the agent model and an error if the operation fails
-func (r *agentRepository) GetByEmail(ctx context.Context, email string) (*model.Agent, error) {
-	r.logger.InfoContext(ctx, "Getting agent by email", "email", email)
-	var agent model.Agent
-	if err := r.db.WithContext(ctx).Preload("Parent").Preload("Children").Where("email = ? AND deleted_at IS NULL", email).First(&agent).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
-			r.logger.WarnContext(ctx, "Agent not found by email", "email", email)
-			return nil, domain.ErrNotFound
-		}
-		r.logger.ErrorContext(ctx, "Failed to get agent by email", "email", email, "error", err)
-		return nil, fmt.Errorf("failed to get agent by email: %w", err)
-	}
-	r.logger.InfoContext(ctx, "Agent retrieved by email", "id", agent.ID, "email", agent.Email)
-	return &agent, nil
-}
-
 // Update modifies an existing agent in the database
 // It takes a context for request-scoped values and a pointer to an Agent model
 // Returns an error if the operation fails

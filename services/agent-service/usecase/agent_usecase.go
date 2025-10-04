@@ -23,10 +23,6 @@ type AgentUseCase interface {
 	// It takes a context for request-scoped values and the agent ID
 	// Returns the agent model and an error if the operation fails
 	GetAgentByID(ctx context.Context, id string) (*model.Agent, error)
-	// GetAgentByEmail retrieves an agent by their email address
-	// It takes a context for request-scoped values and the email address
-	// Returns the agent model and an error if the operation fails
-	GetAgentByEmail(ctx context.Context, email string) (*model.Agent, error)
 	// UpdateAgent modifies an existing agent with business validation
 	// It takes a context for request-scoped values and a pointer to an Agent model
 	// Returns an error if the operation fails
@@ -102,17 +98,7 @@ func (uc *agentUseCase) CreateAgent(ctx context.Context, agent *model.Agent) err
 		return domain.ErrInvalidAgentType
 	}
 
-	// Check if agent with email already exists
-	existingAgent, err := uc.agentRepo.GetByEmail(ctx, agent.Email)
-	if err != nil && !errors.Is(err, domain.ErrNotFound) {
-		uc.logger.ErrorContext(ctx, "Error checking existing agent", "email", agent.Email, "error", err)
-		return fmt.Errorf("error checking existing agent: %w", err)
-	}
-
-	if existingAgent != nil {
-		uc.logger.WarnContext(ctx, "Agent with email already exists", "email", agent.Email)
-		return domain.ErrEmailAlreadyExists
-	}
+	// TODO: Email uniqueness check removed - consider database-level unique constraint
 
 	// If parent agent ID is provided, validate it exists
 	if agent.ParentAgentID != nil {
@@ -166,30 +152,6 @@ func (uc *agentUseCase) GetAgentByID(ctx context.Context, id string) (*model.Age
 	return agent, nil
 }
 
-// GetAgentByEmail retrieves an agent by their email address
-// It takes a context for request-scoped values and the email address
-// Returns the agent model and an error if the operation fails
-func (uc *agentUseCase) GetAgentByEmail(ctx context.Context, email string) (*model.Agent, error) {
-	uc.logger.InfoContext(ctx, "Getting agent by email in usecase", "email", email)
-	if email == "" {
-		uc.logger.WarnContext(ctx, "Email is required for agent lookup")
-		return nil, domain.ErrEmailRequired
-	}
-
-	agent, err := uc.agentRepo.GetByEmail(ctx, email)
-	if err != nil {
-		if errors.Is(err, domain.ErrNotFound) {
-			uc.logger.WarnContext(ctx, "Agent not found by email", "email", email)
-			return nil, domain.ErrAgentNotFound
-		}
-		uc.logger.ErrorContext(ctx, "Error getting agent by email", "email", email, "error", err)
-		return nil, fmt.Errorf("error getting agent by email: %w", err)
-	}
-
-	uc.logger.InfoContext(ctx, "Agent retrieved by email in usecase", "id", agent.ID, "email", agent.Email)
-	return agent, nil
-}
-
 // UpdateAgent modifies an existing agent with business validation
 // It takes a context for request-scoped values and a pointer to an Agent model
 // Returns an error if the operation fails
@@ -221,17 +183,7 @@ func (uc *agentUseCase) UpdateAgent(ctx context.Context, agent *model.Agent) err
 		return domain.ErrInvalidAgentType
 	}
 
-	// Check if agent with email already exists (excluding current agent)
-	existingAgent, err := uc.agentRepo.GetByEmail(ctx, agent.Email)
-	if err != nil && !errors.Is(err, domain.ErrNotFound) {
-		uc.logger.ErrorContext(ctx, "Error checking existing agent during update", "email", agent.Email, "error", err)
-		return fmt.Errorf("error checking existing agent: %w", err)
-	}
-
-	if existingAgent != nil && existingAgent.ID != agent.ID {
-		uc.logger.WarnContext(ctx, "Email already exists for another agent", "email", agent.Email, "existing_id", existingAgent.ID, "update_id", agent.ID)
-		return domain.ErrEmailAlreadyExists
-	}
+	// TODO: Email uniqueness check removed - consider database-level unique constraint
 
 	// If parent agent ID is provided, validate it exists and prevent circular reference
 	if agent.ParentAgentID != nil {

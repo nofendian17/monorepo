@@ -18,11 +18,6 @@ type GetAgentByIDRequest struct {
 	ID string `validate:"required,ulid"`
 }
 
-// GetAgentByEmailRequest represents the request for getting an agent by email
-type GetAgentByEmailRequest struct {
-	Email string `validate:"required,email"`
-}
-
 // DeleteAgentRequest represents the request for deleting an agent
 type DeleteAgentRequest struct {
 	ID string `validate:"required,ulid"`

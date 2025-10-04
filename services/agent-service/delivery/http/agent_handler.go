@@ -74,8 +74,6 @@ func (h *AgentHandler) CreateHandler(w http.ResponseWriter, r *http.Request) {
 			h.API.BadRequest(ctx, w, err.Error())
 		case err.Error() == domain.ErrInvalidAgentType.Message:
 			h.API.BadRequest(ctx, w, err.Error())
-		case err.Error() == domain.ErrEmailAlreadyExists.Message:
-			h.API.Conflict(ctx, w, domain.ErrEmailAlreadyExists.Message)
 		case err.Error() == domain.ErrParentAgentNotFound.Message:
 			h.API.NotFound(ctx, w, err.Error())
 		case err.Error() == domain.ErrCircularReference.Message:
@@ -106,8 +104,6 @@ func (h *AgentHandler) handleAgentError(ctx context.Context, w http.ResponseWrit
 		h.API.BadRequest(ctx, w, err.Error())
 	case err.Error() == domain.ErrInvalidAgentType.Message:
 		h.API.BadRequest(ctx, w, err.Error())
-	case err.Error() == domain.ErrEmailAlreadyExists.Message:
-		h.API.BadRequest(ctx, w, domain.ErrEmailAlreadyExists.Message)
 	case err.Error() == domain.ErrParentAgentNotFound.Message:
 		h.API.NotFound(ctx, w, err.Error())
 	case err.Error() == domain.ErrCircularReference.Message:
