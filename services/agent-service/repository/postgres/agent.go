@@ -137,31 +137,3 @@ func (r *agentRepository) GetByParentID(ctx context.Context, parentID string) ([
 	r.logger.InfoContext(ctx, "Agents retrieved by parent ID", "count", len(agents), "parentID", parentID)
 	return agents, nil
 }
-
-// GetActiveAgents retrieves all active agents
-// It takes a context for request-scoped values
-// Returns a slice of agent pointers and an error if the operation fails
-func (r *agentRepository) GetActiveAgents(ctx context.Context) ([]*model.Agent, error) {
-	r.logger.InfoContext(ctx, "Getting active agents")
-	var agents []*model.Agent
-	if err := r.db.WithContext(ctx).Preload("Parent").Preload("Children").Where("is_active = ? AND deleted_at IS NULL", true).Find(&agents).Error; err != nil {
-		r.logger.ErrorContext(ctx, "Failed to get active agents", "error", err)
-		return nil, fmt.Errorf("failed to get active agents: %w", err)
-	}
-	r.logger.InfoContext(ctx, "Active agents retrieved", "count", len(agents))
-	return agents, nil
-}
-
-// GetInactiveAgents retrieves all inactive agents
-// It takes a context for request-scoped values
-// Returns a slice of agent pointers and an error if the operation fails
-func (r *agentRepository) GetInactiveAgents(ctx context.Context) ([]*model.Agent, error) {
-	r.logger.InfoContext(ctx, "Getting inactive agents")
-	var agents []*model.Agent
-	if err := r.db.WithContext(ctx).Preload("Parent").Preload("Children").Where("is_active = ? AND deleted_at IS NULL", false).Find(&agents).Error; err != nil {
-		r.logger.ErrorContext(ctx, "Failed to get inactive agents", "error", err)
-		return nil, fmt.Errorf("failed to get inactive agents: %w", err)
-	}
-	r.logger.InfoContext(ctx, "Inactive agents retrieved", "count", len(agents))
-	return agents, nil
-}

@@ -21,14 +21,6 @@ type Agent interface {
 	// It takes a context for request-scoped values and the parent agent ID
 	// Returns a slice of agent pointers and an error if the operation fails
 	GetByParentID(ctx context.Context, parentID string) ([]*model.Agent, error)
-	// GetActiveAgents retrieves all active agents
-	// It takes a context for request-scoped values
-	// Returns a slice of agent pointers and an error if the operation fails
-	GetActiveAgents(ctx context.Context) ([]*model.Agent, error)
-	// GetInactiveAgents retrieves all inactive agents
-	// It takes a context for request-scoped values
-	// Returns a slice of agent pointers and an error if the operation fails
-	GetInactiveAgents(ctx context.Context) ([]*model.Agent, error)
 	// Update modifies an existing agent in the database
 	// It takes a context for request-scoped values and a pointer to an Agent model
 	// Returns an error if the operation fails

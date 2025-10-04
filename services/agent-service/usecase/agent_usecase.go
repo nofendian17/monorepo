@@ -27,10 +27,6 @@ type AgentUseCase interface {
 	// It takes a context for request-scoped values and a pointer to an Agent model
 	// Returns an error if the operation fails
 	UpdateAgent(ctx context.Context, agent *model.Agent) error
-	// UpdateAgentStatus updates the active status of an agent
-	// It takes a context for request-scoped values, agent ID, and the new active status
-	// Returns an error if the operation fails
-	UpdateAgentStatus(ctx context.Context, id string, isActive bool) error
 	// DeleteAgent removes an agent from the system
 	// It takes a context for request-scoped values and the agent ID
 	// Returns an error if the operation fails
@@ -39,14 +35,6 @@ type AgentUseCase interface {
 	// It takes a context for request-scoped values and the parent agent ID
 	// Returns a slice of agent pointers and an error if the operation fails
 	GetAgentsByParentID(ctx context.Context, parentID string) ([]*model.Agent, error)
-	// GetActiveAgents retrieves all active agents
-	// It takes a context for request-scoped values
-	// Returns a slice of agent pointers and an error if the operation fails
-	GetActiveAgents(ctx context.Context) ([]*model.Agent, error)
-	// GetInactiveAgents retrieves all inactive agents
-	// It takes a context for request-scoped values
-	// Returns a slice of agent pointers and an error if the operation fails
-	GetInactiveAgents(ctx context.Context) ([]*model.Agent, error)
 	// ListAgents retrieves a paginated list of agents
 	// It takes a context for request-scoped values, offset for pagination, and limit for page size
 	// Returns a slice of agent pointers, the real total count, and an error if the operation fails
@@ -211,39 +199,6 @@ func (uc *agentUseCase) UpdateAgent(ctx context.Context, agent *model.Agent) err
 	return nil
 }
 
-// UpdateAgentStatus updates the active status of an agent
-// It takes a context for request-scoped values, agent ID, and the new active status
-// Returns an error if the operation fails
-func (uc *agentUseCase) UpdateAgentStatus(ctx context.Context, id string, isActive bool) error {
-	uc.logger.InfoContext(ctx, "Updating agent status in usecase", "id", id, "isActive", isActive)
-	if id == "" {
-		uc.logger.WarnContext(ctx, "Invalid agent ID for status update", "id", id)
-		return domain.ErrInvalidID
-	}
-
-	// Get existing agent
-	agent, err := uc.agentRepo.GetByID(ctx, id)
-	if err != nil {
-		if errors.Is(err, domain.ErrNotFound) {
-			uc.logger.WarnContext(ctx, "Agent not found for status update", "id", id)
-			return domain.ErrAgentNotFound
-		}
-		uc.logger.ErrorContext(ctx, "Error getting agent for status update", "id", id, "error", err)
-		return fmt.Errorf("error getting agent: %w", err)
-	}
-
-	// Update the status
-	agent.IsActive = isActive
-
-	if err := uc.agentRepo.Update(ctx, agent); err != nil {
-		uc.logger.ErrorContext(ctx, "Failed to update agent status in repository", "id", agent.ID, "isActive", isActive, "error", err)
-		return err
-	}
-
-	uc.logger.InfoContext(ctx, "Agent status updated successfully in usecase", "id", agent.ID, "isActive", isActive)
-	return nil
-}
-
 // DeleteAgent removes an agent from the system
 // It takes a context for request-scoped values and the agent ID
 // Returns an error if the operation fails
@@ -322,37 +277,5 @@ func (uc *agentUseCase) GetAgentsByParentID(ctx context.Context, parentID string
 	}
 
 	uc.logger.InfoContext(ctx, "Agents retrieved by parent ID in usecase", "count", len(agents), "parentID", parentID)
-	return agents, nil
-}
-
-// GetActiveAgents retrieves all active agents
-// It takes a context for request-scoped values
-// Returns a slice of agent pointers and an error if the operation fails
-func (uc *agentUseCase) GetActiveAgents(ctx context.Context) ([]*model.Agent, error) {
-	uc.logger.InfoContext(ctx, "Getting active agents in usecase")
-
-	agents, err := uc.agentRepo.GetActiveAgents(ctx)
-	if err != nil {
-		uc.logger.ErrorContext(ctx, "Error getting active agents", "error", err)
-		return nil, fmt.Errorf("error getting active agents: %w", err)
-	}
-
-	uc.logger.InfoContext(ctx, "Active agents retrieved in usecase", "count", len(agents))
-	return agents, nil
-}
-
-// GetInactiveAgents retrieves all inactive agents
-// It takes a context for request-scoped values
-// Returns a slice of agent pointers and an error if the operation fails
-func (uc *agentUseCase) GetInactiveAgents(ctx context.Context) ([]*model.Agent, error) {
-	uc.logger.InfoContext(ctx, "Getting inactive agents in usecase")
-
-	agents, err := uc.agentRepo.GetInactiveAgents(ctx)
-	if err != nil {
-		uc.logger.ErrorContext(ctx, "Error getting inactive agents", "error", err)
-		return nil, fmt.Errorf("error getting inactive agents: %w", err)
-	}
-
-	uc.logger.InfoContext(ctx, "Inactive agents retrieved in usecase", "count", len(agents))
 	return agents, nil
 }

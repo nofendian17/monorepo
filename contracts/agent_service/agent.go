@@ -33,11 +33,6 @@ type UpdateAgentRequest struct {
 	IsActive      *bool   `json:"is_active,omitempty"`
 }
 
-// UpdateAgentStatusRequest represents the request payload for updating agent active status
-type UpdateAgentStatusRequest struct {
-	IsActive bool `json:"is_active" validate:"required"`
-}
-
 type AgentsListResponse struct {
 	Agents []AgentResponse `json:"agents"`
 }

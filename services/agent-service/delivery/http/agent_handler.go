@@ -205,62 +205,6 @@ func (h *AgentHandler) UpdateHandler(w http.ResponseWriter, r *http.Request) {
 	h.API.Success(ctx, w, agent_service.AgentModelToResponse(existingAgent))
 }
 
-// UpdateStatusHandler handles HTTP requests to update agent active status
-// It expects the agent ID as a URL parameter and status data in the request body
-// Returns a 200 status code with the updated agent on success
-// Returns a 400 status code for invalid ID format or request data
-// Returns a 422 status code for validation errors
-// Returns a 404 status code if the agent is not found
-// Returns a 500 status code for internal server errors
-func (h *AgentHandler) UpdateStatusHandler(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	h.Logger.InfoContext(ctx, "Update agent status handler called")
-
-	var req agent_service.UpdateAgentStatusRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.Logger.ErrorContext(ctx, "Invalid request body for agent status update", "error", err)
-		h.API.BadRequest(ctx, w, "Invalid request body")
-		return
-	}
-
-	agentID := chi.URLParam(r, "id")
-	if agentID == "" {
-		h.Logger.WarnContext(ctx, "Agent ID is required for status update")
-		h.API.BadRequest(ctx, w, "Agent ID is required")
-		return
-	}
-
-	// Validate the agent ID
-	idReq := agent_service.GetAgentByIDRequest{ID: agentID}
-	if err := validator.ValidateStruct(&idReq); err != nil {
-		h.Logger.WarnContext(ctx, "Validation failed for agent ID", "errors", err)
-		h.API.ValidationError(ctx, w, h.convertValidationErrors(err))
-		return
-	}
-
-	// Validate the status request
-	if err := validator.ValidateStruct(&req); err != nil {
-		h.Logger.WarnContext(ctx, "Validation failed for agent status update", "errors", err)
-		h.API.ValidationError(ctx, w, h.convertValidationErrors(err))
-		return
-	}
-
-	if err := h.AgentUseCase.UpdateAgentStatus(ctx, agentID, req.IsActive); err != nil {
-		h.handleAgentError(ctx, w, err, agentID)
-		return
-	}
-
-	// Get the updated agent to return
-	agent, err := h.AgentUseCase.GetAgentByID(ctx, agentID)
-	if err != nil {
-		h.handleAgentError(ctx, w, err, agentID)
-		return
-	}
-
-	h.Logger.InfoContext(ctx, "Agent status updated successfully in handler", "id", agent.ID, "isActive", agent.IsActive)
-	h.API.Success(ctx, w, agent_service.AgentModelToResponse(agent))
-}
-
 // DeleteHandler handles HTTP requests to delete an agent
 // It expects the agent ID as a URL parameter
 // Returns a 200 status code with a success message on success
@@ -363,42 +307,6 @@ func (h *AgentHandler) ListHandler(w http.ResponseWriter, r *http.Request) {
 
 	h.Logger.InfoContext(ctx, "Agents listed successfully in handler", "count", len(agents), "offset", offset, "limit", limit, "total", total)
 	h.API.SuccessWithMeta(ctx, w, agent_service.AgentModelsToResponses(agents), meta)
-}
-
-// GetActiveHandler handles HTTP requests to get all active agents
-// Returns a 200 status code with a list of active agents on success
-// Returns a 500 status code for internal server errors
-func (h *AgentHandler) GetActiveHandler(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	h.Logger.InfoContext(ctx, "Get active agents handler called")
-
-	agents, err := h.AgentUseCase.GetActiveAgents(ctx)
-	if err != nil {
-		h.Logger.ErrorContext(ctx, "Error getting active agents", "error", err)
-		h.API.InternalServerError(ctx, w, "Failed to get active agents")
-		return
-	}
-
-	h.Logger.InfoContext(ctx, "Active agents retrieved successfully in handler", "count", len(agents))
-	h.API.Success(ctx, w, agent_service.AgentModelsToResponses(agents))
-}
-
-// GetInactiveHandler handles HTTP requests to get all inactive agents
-// Returns a 200 status code with a list of inactive agents on success
-// Returns a 500 status code for internal server errors
-func (h *AgentHandler) GetInactiveHandler(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	h.Logger.InfoContext(ctx, "Get inactive agents handler called")
-
-	agents, err := h.AgentUseCase.GetInactiveAgents(ctx)
-	if err != nil {
-		h.Logger.ErrorContext(ctx, "Error getting inactive agents", "error", err)
-		h.API.InternalServerError(ctx, w, "Failed to get inactive agents")
-		return
-	}
-
-	h.Logger.InfoContext(ctx, "Inactive agents retrieved successfully in handler", "count", len(agents))
-	h.API.Success(ctx, w, agent_service.AgentModelsToResponses(agents))
 }
 
 // convertValidationErrors converts validator errors to API error details

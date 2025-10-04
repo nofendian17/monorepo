@@ -53,10 +53,7 @@ func (r *Router) SetupRoutes() http.Handler {
 			agents.Get("/", r.AgentHandler.ListHandler)
 			agents.Get("/{id}", r.AgentHandler.GetByIDHandler)
 			agents.Put("/{id}", r.AgentHandler.UpdateHandler)
-			agents.Patch("/{id}/status", r.AgentHandler.UpdateStatusHandler)
 			agents.Delete("/{id}", r.AgentHandler.DeleteHandler)
-			agents.Get("/active", r.AgentHandler.GetActiveHandler)
-			agents.Get("/inactive", r.AgentHandler.GetInactiveHandler)
 		})
 	})
 	return router
