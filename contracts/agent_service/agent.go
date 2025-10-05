@@ -58,3 +58,32 @@ func AgentModelsToResponses(agents []*model.Agent) []AgentResponse {
 	}
 	return responses
 }
+
+// CreateSubAgentRequest represents the request payload for creating a new sub-agent
+type CreateSubAgentRequest struct {
+	AgentName string `json:"agent_name" validate:"required,min=1,max=255"`
+	Email     string `json:"email" validate:"required,email"`
+}
+
+// CreateSubAgentRequestToModel converts CreateSubAgentRequest to model.Agent
+func CreateSubAgentRequestToModel(req *CreateSubAgentRequest, parentID string) *model.Agent {
+	agent := &model.Agent{
+		AgentName:     req.AgentName,
+		AgentType:     model.AgentTypeSubAgent,
+		ParentAgentID: &parentID,
+		Email:         req.Email,
+		IsActive:      false, // default for new agents
+	}
+
+	return agent
+}
+
+// CreateSubAgentWithUserRequest represents the request payload for creating a new sub-agent with an associated user
+type CreateSubAgentWithUserRequest struct {
+	AgentName       string `json:"agent_name" validate:"required,min=1,max=255"`
+	AgentEmail      string `json:"agent_email" validate:"required,email"`
+	UserName        string `json:"user_name" validate:"required,min=1,max=255"`
+	UserEmail       string `json:"user_email" validate:"required,email"`
+	UserPassword    string `json:"user_password" validate:"required,min=8"`
+	PasswordConfirm string `json:"password_confirm" validate:"required,min=8,eqfield=UserPassword"`
+}

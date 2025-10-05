@@ -49,12 +49,6 @@ type AuthUseCase interface {
 	ResetPassword(ctx context.Context, req agent_service.ResetPasswordRequest) (*agent_service.ResetPasswordResponse, error)
 }
 
-// PasswordResetMessage represents the message sent to Kafka for password reset
-type PasswordResetMessage struct {
-	Email string `json:"email"`
-	Token string `json:"token"`
-}
-
 // authUseCase implements the AuthUseCase interface
 type authUseCase struct {
 	// userRepo is the repository interface for user database operations
@@ -352,7 +346,7 @@ func (uc *authUseCase) ForgotPassword(ctx context.Context, req agent_service.For
 	uc.logger.InfoContext(ctx, "Reset token generated and stored", "userID", user.ID, "token", resetToken)
 
 	// Produce message to Kafka for email sending
-	message := PasswordResetMessage{
+	message := agent_service.PasswordResetMessage{
 		Email: user.Email,
 		Token: resetToken,
 	}

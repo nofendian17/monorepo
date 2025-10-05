@@ -48,3 +48,9 @@ type ResetPasswordRequest struct {
 type ResetPasswordResponse struct {
 	Message string `json:"message"`
 }
+
+// PasswordResetMessage represents the message sent to Kafka for password reset
+type PasswordResetMessage struct {
+	Email string `json:"email"`
+	Token string `json:"token"`
+}

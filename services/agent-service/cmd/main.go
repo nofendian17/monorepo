@@ -130,7 +130,7 @@ func main() {
 
 	// Initialize usecase
 	userUsecase := usecase.NewUserUseCase(userRepo, appLogger)
-	agentUsecase := usecase.NewAgentUseCase(agentRepo, appLogger)
+	agentUsecase := usecase.NewAgentUseCase(agentRepo, userRepo, appLogger)
 
 	// Initialize auth usecase
 	authUsecase := usecase.NewAuthUseCase(userRepo, agentRepo, jwtClient, redisClient, kafkaClient, cfg.Infrastructure.Kafka.Topics.PasswordReset, appLogger)

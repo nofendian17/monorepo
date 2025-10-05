@@ -309,6 +309,97 @@ func (h *AgentHandler) ListHandler(w http.ResponseWriter, r *http.Request) {
 	h.API.SuccessWithMeta(ctx, w, agent_service.AgentModelsToResponses(agents), meta)
 }
 
+// CreateSubAgentHandler handles HTTP requests to create a new sub-agent with an associated user
+// It expects the parent agent ID as a URL parameter and sub-agent with user data in the request body
+// The sub-agent will have AgentType set to SUB_AGENT and ParentAgentID set to the URL parameter
+// Returns a 201 status code with the created sub-agent and user on success
+// Returns a 400 status code for invalid request data
+// Returns a 422 status code for validation errors
+// Returns a 404 status code if the parent agent is not found
+// Returns a 500 status code for internal server errors
+func (h *AgentHandler) CreateSubAgentHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	parentID := chi.URLParam(r, "id")
+	h.Logger.InfoContext(ctx, "Create sub-agent with user handler called", "parent_id", parentID)
+
+	var req agent_service.CreateSubAgentWithUserRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		h.Logger.ErrorContext(ctx, "Invalid request body for sub-agent with user creation", "error", err)
+		h.API.BadRequest(ctx, w, "Invalid request body")
+		return
+	}
+
+	// Validate the sub-agent with user input using the validator
+	validationErrors := validator.ValidateStruct(&req)
+	if validationErrors != nil {
+		h.Logger.WarnContext(ctx, "Validation failed for sub-agent with user creation", "errors", validationErrors)
+		h.API.ValidationError(ctx, w, h.convertValidationErrors(validationErrors))
+		return
+	}
+
+	// Create agent and user in a single transactional operation
+	agent, user, err := h.AgentUseCase.CreateSubAgentWithUser(ctx, parentID, &req)
+	if err != nil {
+		switch {
+		case err.Error() == domain.ErrInvalidID.Message:
+			h.API.BadRequest(ctx, w, err.Error())
+		case err.Error() == domain.ErrParentAgentNotFound.Message:
+			h.API.NotFound(ctx, w, err.Error())
+		default:
+			h.Logger.ErrorContext(ctx, "Unexpected error during sub-agent with user creation", "parent_id", parentID, "error", err)
+			h.API.InternalServerError(ctx, w, "Failed to create sub-agent with user")
+		}
+		return
+	}
+
+	// Create response with both agent and user data
+	response := map[string]interface{}{
+		"agent": agent_service.AgentModelToResponse(agent),
+		"user":  agent_service.UserModelToResponse(user),
+	}
+
+	h.Logger.InfoContext(ctx, "Sub-agent with user created successfully in handler", "agent_id", agent.ID, "user_id", user.ID, "parent_id", parentID)
+	h.API.Created(ctx, w, response)
+}
+
+// ListSubAgentsHandler handles HTTP requests to list all sub-agents of a parent agent
+// It expects the parent agent ID as a URL parameter
+// Returns a 200 status code with a list of sub-agents on success
+// Returns a 400 status code for invalid parent ID format
+// Returns a 404 status code if the parent agent is not found
+// Returns a 500 status code for internal server errors
+func (h *AgentHandler) ListSubAgentsHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	parentID := chi.URLParam(r, "id")
+	h.Logger.InfoContext(ctx, "List sub-agents handler called", "parent_id", parentID)
+
+	// Validate parent ID
+	req := agent_service.GetAgentByIDRequest{ID: parentID}
+	if err := validator.ValidateStruct(&req); err != nil {
+		h.Logger.WarnContext(ctx, "Validation failed for list sub-agents", "errors", err)
+		h.API.ValidationError(ctx, w, h.convertValidationErrors(err))
+		return
+	}
+
+	// Check if parent agent exists
+	_, err := h.AgentUseCase.GetAgentByID(ctx, parentID)
+	if err != nil {
+		h.handleAgentError(ctx, w, err, parentID)
+		return
+	}
+
+	// Get sub-agents
+	subAgents, err := h.AgentUseCase.GetAgentsByParentID(ctx, parentID)
+	if err != nil {
+		h.Logger.ErrorContext(ctx, "Error listing sub-agents", "parent_id", parentID, "error", err)
+		h.API.InternalServerError(ctx, w, "Failed to list sub-agents")
+		return
+	}
+
+	h.Logger.InfoContext(ctx, "Sub-agents listed successfully in handler", "count", len(subAgents), "parent_id", parentID)
+	h.API.Success(ctx, w, agent_service.AgentModelsToResponses(subAgents))
+}
+
 // convertValidationErrors converts validator errors to API error details
 func (h *AgentHandler) convertValidationErrors(validationErrors map[string]string) []api.ErrorDetail {
 	details := make([]api.ErrorDetail, 0, len(validationErrors))

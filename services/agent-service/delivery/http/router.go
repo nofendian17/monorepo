@@ -69,6 +69,13 @@ func (r *Router) SetupRoutes() http.Handler {
 			agents.Get("/{id}", r.AgentHandler.GetByIDHandler)
 			agents.Put("/{id}", r.AgentHandler.UpdateHandler)
 			agents.Delete("/{id}", r.AgentHandler.DeleteHandler)
+			// Sub-agent routes (protected by JWT and IATA agent type check)
+			agents.With(JWTMiddleware(r.JWTClient, r.AppLogger, r.AuthHandler.API)).
+				With(IATAAgentMiddleware(r.AppLogger, r.AuthHandler.API)).
+				Route("/{id}/subagents", func(subagents chi.Router) {
+					subagents.Post("/", r.AgentHandler.CreateSubAgentHandler)
+					subagents.Get("/", r.AgentHandler.ListSubAgentsHandler)
+				})
 		})
 	})
 	return router

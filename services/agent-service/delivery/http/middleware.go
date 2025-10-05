@@ -2,6 +2,7 @@
 package http
 
 import (
+	"agent-service/domain/model"
 	"context"
 	"net/http"
 	"time"
@@ -81,4 +82,32 @@ func JWTMiddleware(jwtClient jwt.JWTClient, logger logger.LoggerInterface, apiCl
 			next.ServeHTTP(w, r)
 		})
 	}
+}
+
+// AgentTypeMiddleware validates that the JWT token has the specified agent_type
+// It should be used after JWTMiddleware
+// Returns a 403 status code if the agent type does not match the required type
+func AgentTypeMiddleware(requiredAgentType string, logger logger.LoggerInterface, apiClient api.Api) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ctx := r.Context()
+
+			// Get agent_type from context (set by JWTMiddleware)
+			agentType, ok := ctx.Value("agent_type").(string)
+			if !ok || agentType != requiredAgentType {
+				logger.WarnContext(ctx, "Access denied: agent type does not match required type", "agent_type", agentType, "required_type", requiredAgentType)
+				apiClient.Forbidden(ctx, w, "Access denied: insufficient agent permissions")
+				return
+			}
+
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+// IATAAgentMiddleware validates that the JWT token has agent_type = "IATA"
+// It should be used after JWTMiddleware
+// Returns a 403 status code if the agent type is not IATA
+func IATAAgentMiddleware(logger logger.LoggerInterface, apiClient api.Api) func(http.Handler) http.Handler {
+	return AgentTypeMiddleware(model.AgentTypeIATA, logger, apiClient)
 }
