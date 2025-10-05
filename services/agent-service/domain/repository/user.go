@@ -33,6 +33,10 @@ type User interface {
 	// It takes a context for request-scoped values and a pointer to a User model
 	// Returns an error if the operation fails
 	Update(ctx context.Context, user *model.User) error
+	// UpdatePassword updates only the password of a user
+	// It takes a context for request-scoped values, user ID, and hashed password
+	// Returns an error if the operation fails
+	UpdatePassword(ctx context.Context, id string, hashedPassword string) error
 	// Delete removes a user from the database (soft delete)
 	// It takes a context for request-scoped values and the user ID
 	// Returns an error if the operation fails

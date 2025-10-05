@@ -93,6 +93,19 @@ func (r *userRepository) Update(ctx context.Context, user *model.User) error {
 	return nil
 }
 
+// UpdatePassword updates only the password of a user
+// It takes a context for request-scoped values, user ID, and hashed password
+// Returns an error if the operation fails
+func (r *userRepository) UpdatePassword(ctx context.Context, id string, hashedPassword string) error {
+	r.logger.InfoContext(ctx, "Updating user password", "id", id)
+	if err := r.db.WithContext(ctx).Model(&model.User{}).Where("id = ?", id).Update("password", hashedPassword).Error; err != nil {
+		r.logger.ErrorContext(ctx, "Failed to update user password", "id", id, "error", err)
+		return fmt.Errorf("failed to update user password: %w", err)
+	}
+	r.logger.InfoContext(ctx, "User password updated successfully", "id", id)
+	return nil
+}
+
 // Delete removes a user from the database (soft delete)
 // It takes a context for request-scoped values and the user ID
 // Returns an error if the operation fails
@@ -133,7 +146,7 @@ func (r *userRepository) List(ctx context.Context, offset, limit int) ([]*model.
 	}
 
 	// Get paginated users
-	if err := r.db.WithContext(ctx).Preload("Agent").Where("is_active = ? AND deleted_at IS NULL", true).Offset(offset).Limit(limit).Order("id ASC").Find(&users).Error; err != nil {
+	if err := r.db.WithContext(ctx).Where("is_active = ? AND deleted_at IS NULL", true).Offset(offset).Limit(limit).Order("id ASC").Find(&users).Error; err != nil {
 		r.logger.ErrorContext(ctx, "Failed to list users", "offset", offset, "limit", limit, "error", err)
 		return nil, 0, fmt.Errorf("failed to list users: %w", err)
 	}
@@ -148,7 +161,7 @@ func (r *userRepository) List(ctx context.Context, offset, limit int) ([]*model.
 func (r *userRepository) GetByAgentID(ctx context.Context, agentID string) ([]*model.User, error) {
 	r.logger.InfoContext(ctx, "Getting users by agent ID", "agentID", agentID)
 	var users []*model.User
-	if err := r.db.WithContext(ctx).Preload("Agent").Where("agent_id = ? AND is_active = ? AND deleted_at IS NULL", agentID, true).Find(&users).Error; err != nil {
+	if err := r.db.WithContext(ctx).Where("agent_id = ? AND is_active = ? AND deleted_at IS NULL", agentID, true).Find(&users).Error; err != nil {
 		r.logger.ErrorContext(ctx, "Failed to get users by agent ID", "agentID", agentID, "error", err)
 		return nil, fmt.Errorf("failed to get users by agent ID: %w", err)
 	}

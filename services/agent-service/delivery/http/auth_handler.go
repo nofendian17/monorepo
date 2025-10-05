@@ -181,6 +181,88 @@ func (h *AuthHandler) ProfileHandler(w http.ResponseWriter, r *http.Request) {
 	h.API.Success(ctx, w, response)
 }
 
+// ForgotPasswordHandler handles HTTP requests for forgot password
+// It initiates the password reset process by generating a reset token
+// Returns a 200 status code with a success message on success
+// Returns a 400 status code for invalid request data
+// Returns a 500 status code for internal server errors
+func (h *AuthHandler) ForgotPasswordHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	h.Logger.InfoContext(ctx, "Forgot password handler called")
+
+	var req agent_service.ForgotPasswordRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		h.Logger.ErrorContext(ctx, "Failed to decode forgot password request", "error", err)
+		h.API.BadRequest(ctx, w, "Invalid request body")
+		return
+	}
+
+	// Validate request
+	if validationErrors := validator.ValidateStruct(req); validationErrors != nil {
+		h.Logger.WarnContext(ctx, "Validation failed for forgot password request", "errors", validationErrors)
+		h.API.ValidationError(ctx, w, h.convertValidationErrors(validationErrors))
+		return
+	}
+
+	// Call usecase
+	response, err := h.AuthUseCase.ForgotPassword(ctx, req)
+	if err != nil {
+		h.Logger.ErrorContext(ctx, "Forgot password failed", "error", err)
+		h.API.InternalServerError(ctx, w, "Failed to process forgot password request")
+		return
+	}
+
+	h.Logger.InfoContext(ctx, "Forgot password request processed successfully")
+	h.API.Success(ctx, w, response)
+}
+
+// ResetPasswordHandler handles HTTP requests for reset password
+// It validates the reset token and updates the user's password
+// Returns a 200 status code with a success message on success
+// Returns a 400 status code for invalid request data or token
+// Returns a 500 status code for internal server errors
+func (h *AuthHandler) ResetPasswordHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	h.Logger.InfoContext(ctx, "Reset password handler called")
+
+	var req agent_service.ResetPasswordRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		h.Logger.ErrorContext(ctx, "Failed to decode reset password request", "error", err)
+		h.API.BadRequest(ctx, w, "Invalid request body")
+		return
+	}
+
+	// Validate request
+	if validationErrors := validator.ValidateStruct(req); validationErrors != nil {
+		h.Logger.WarnContext(ctx, "Validation failed for reset password request", "errors", validationErrors)
+		h.API.ValidationError(ctx, w, h.convertValidationErrors(validationErrors))
+		return
+	}
+
+	// Call usecase
+	response, err := h.AuthUseCase.ResetPassword(ctx, req)
+	if err != nil {
+		h.Logger.WarnContext(ctx, "Reset password failed", "error", err)
+
+		// Check for specific error messages
+		if err.Error() == "invalid or expired reset token" {
+			h.API.BadRequest(ctx, w, "Invalid or expired reset token")
+			return
+		}
+		if err.Error() == "user account is not active" {
+			h.API.BadRequest(ctx, w, "User account is not active")
+			return
+		}
+
+		// Generic error
+		h.API.InternalServerError(ctx, w, "Failed to reset password")
+		return
+	}
+
+	h.Logger.InfoContext(ctx, "Password reset successful")
+	h.API.Success(ctx, w, response)
+}
+
 // convertValidationErrors converts validator errors to API error details
 func (h *AuthHandler) convertValidationErrors(validationErrors map[string]string) []api.ErrorDetail {
 	details := make([]api.ErrorDetail, 0, len(validationErrors))

@@ -27,3 +27,24 @@ type RefreshTokenResponse struct {
 	AccessTokenExpire  int64  `json:"access_token_expire"`
 	RefreshTokenExpire int64  `json:"refresh_token_expire"`
 }
+
+// ForgotPasswordRequest represents the request payload for forgot password
+type ForgotPasswordRequest struct {
+	Email string `json:"email" validate:"required,email"`
+}
+
+// ForgotPasswordResponse represents the response payload for forgot password
+type ForgotPasswordResponse struct {
+	Message string `json:"message"`
+}
+
+// ResetPasswordRequest represents the request payload for reset password
+type ResetPasswordRequest struct {
+	Token    string `json:"token" validate:"required"`
+	Password string `json:"password" validate:"required,min=8"`
+}
+
+// ResetPasswordResponse represents the response payload for reset password
+type ResetPasswordResponse struct {
+	Message string `json:"message"`
+}

@@ -15,8 +15,8 @@ type Config struct {
 	Application ApplicationConfig `mapstructure:"application"`
 	// Server contains HTTP server settings
 	Server ServerConfig `mapstructure:"server"`
-	// Database contains database connection settings
-	Database DatabaseConfig `mapstructure:"database"`
+	// Infrastructure contains infrastructure connection settings
+	Infrastructure InfrastructureConfig `mapstructure:"infrastructure"`
 	// Security contains security-related settings
 	Security SecurityConfig `mapstructure:"security"`
 }
@@ -43,13 +43,15 @@ type ServerConfig struct {
 	ShutdownTimeout int `mapstructure:"shutdown_timeout"` // in seconds
 }
 
-// DatabaseConfig holds the database configuration
-// It contains settings for database connections, currently only PostgreSQL
-type DatabaseConfig struct {
+// InfrastructureConfig holds the infrastructure configuration
+// It contains settings for infrastructure connections like databases and message queues
+type InfrastructureConfig struct {
 	// Postgres contains PostgreSQL-specific settings
 	Postgres PostgresConfig `mapstructure:"postgres"`
 	// Redis contains Redis configuration
 	Redis RedisConfig `mapstructure:"redis"`
+	// Kafka contains Kafka configuration
+	Kafka KafkaConfig `mapstructure:"kafka"`
 }
 
 // SecurityConfig holds the security configuration
@@ -87,6 +89,21 @@ type RedisConfig struct {
 	DB int `mapstructure:"db"`
 	// PoolSize specifies the maximum number of socket connections
 	PoolSize int `mapstructure:"pool_size"`
+}
+
+// KafkaConfig holds the Kafka configuration
+// It contains settings for Kafka connection and client configuration
+type KafkaConfig struct {
+	// Brokers specifies the Kafka broker addresses
+	Brokers []string `mapstructure:"brokers"`
+	// Topics contains specific topic names for different message types
+	Topics KafkaTopics `mapstructure:"topics"`
+}
+
+// KafkaTopics holds specific topic names for different message types
+type KafkaTopics struct {
+	// PasswordReset specifies the topic name for password reset messages
+	PasswordReset string `mapstructure:"password_reset"`
 }
 
 // PostgresConfig holds the PostgreSQL database configuration
@@ -137,30 +154,30 @@ func LoadConfig() (*Config, error) {
 	viper.SetDefault("server.read_timeout", 15)     // seconds
 	viper.SetDefault("server.write_timeout", 15)    // seconds
 	viper.SetDefault("server.shutdown_timeout", 30) // seconds
-	viper.SetDefault("database.postgres.host", "localhost")
-	viper.SetDefault("database.postgres.port", 5432)
-	viper.SetDefault("database.postgres.user", "postgres")
-	viper.SetDefault("database.postgres.password", "password")
-	viper.SetDefault("database.postgres.dbname", "app_db")
-	viper.SetDefault("database.postgres.schema", "public")
-	viper.SetDefault("database.postgres.sslmode", "disable")
-	viper.SetDefault("database.postgres.max_idle_conns", 10)
-	viper.SetDefault("database.postgres.max_open_conns", 100)
-	viper.SetDefault("database.postgres.conn_max_idle_time", 5) // minutes
-	viper.SetDefault("database.postgres.conn_max_lifetime", 60) // minutes
-	viper.SetDefault("database.postgres.debug", false)
+	viper.SetDefault("infrastructure.postgres.host", "localhost")
+	viper.SetDefault("infrastructure.postgres.port", 5432)
+	// No defaults for user and password - they must be provided
+	viper.SetDefault("infrastructure.postgres.dbname", "app_db")
+	viper.SetDefault("infrastructure.postgres.schema", "public")
+	viper.SetDefault("infrastructure.postgres.sslmode", "disable")
+	viper.SetDefault("infrastructure.postgres.max_idle_conns", 10)
+	viper.SetDefault("infrastructure.postgres.max_open_conns", 100)
+	viper.SetDefault("infrastructure.postgres.conn_max_idle_time", 5) // minutes
+	viper.SetDefault("infrastructure.postgres.conn_max_lifetime", 60) // minutes
+	viper.SetDefault("infrastructure.postgres.debug", false)
 	viper.SetDefault("application.name", "Application Service")
 	viper.SetDefault("application.version", "1.0")
-	viper.SetDefault("security.jwt.access_token_secret", "default-access-secret")
-	viper.SetDefault("security.jwt.refresh_token_secret", "default-refresh-secret")
+	// No defaults for JWT secrets - they must be provided via config or env
 	viper.SetDefault("security.jwt.access_token_expiry", 15)    // minutes
 	viper.SetDefault("security.jwt.refresh_token_expiry", 24*7) // hours (7 days)
 	viper.SetDefault("security.jwt.stateful", false)
-	viper.SetDefault("database.redis.addrs", []string{"localhost:6379"})
-	viper.SetDefault("database.redis.username", "")
-	viper.SetDefault("database.redis.password", "")
-	viper.SetDefault("database.redis.db", 0)
-	viper.SetDefault("database.redis.pool_size", 10)
+	viper.SetDefault("infrastructure.redis.addrs", []string{"localhost:6379"})
+	viper.SetDefault("infrastructure.redis.username", "")
+	viper.SetDefault("infrastructure.redis.password", "")
+	viper.SetDefault("infrastructure.redis.db", 0)
+	viper.SetDefault("infrastructure.redis.pool_size", 10)
+	viper.SetDefault("infrastructure.kafka.brokers", []string{"localhost:9092"})
+	viper.SetDefault("infrastructure.kafka.topics.password_reset", "agent.password.reset")
 
 	if err := viper.ReadInConfig(); err != nil {
 		var configFileNotFoundError viper.ConfigFileNotFoundError
@@ -172,6 +189,20 @@ func LoadConfig() (*Config, error) {
 	var config Config
 	if err := viper.Unmarshal(&config); err != nil {
 		return nil, err
+	}
+
+	// Validate required secrets
+	if config.Security.JWT.AccessTokenSecret == "" {
+		return nil, errors.New("JWT access token secret is required")
+	}
+	if config.Security.JWT.RefreshTokenSecret == "" {
+		return nil, errors.New("JWT refresh token secret is required")
+	}
+	if config.Infrastructure.Postgres.User == "" {
+		return nil, errors.New("database user is required")
+	}
+	if config.Infrastructure.Postgres.Password == "" {
+		return nil, errors.New("database password is required")
 	}
 
 	return &config, nil

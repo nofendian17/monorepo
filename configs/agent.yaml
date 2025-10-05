@@ -16,8 +16,8 @@ server:
   # ShutdownTimeout defines the maximum duration the server will wait for active connections to finish during shutdown, in seconds
   shutdown_timeout: 30
 
-# Database configuration
-database:
+# Infrastructure configuration
+infrastructure:
   # PostgreSQL-specific settings
   postgres:
     # Host specifies the database server host
@@ -31,7 +31,7 @@ database:
     # DBName specifies the database name
     dbname: "test"
     # Schema specifies the database schema
-    schema: "public"
+    schema: "agent_service"
     # SSLMode specifies the SSL mode for database connection
     sslmode: "disable"
     # MaxIdleConns specifies the maximum number of idle connections in the pool
@@ -60,6 +60,16 @@ database:
     db: 0
     # PoolSize specifies the maximum number of socket connections
     pool_size: 10
+
+  # Kafka configuration for message queuing
+  kafka:
+    # Brokers specifies the Kafka broker addresses (array of host:port)
+    brokers:
+      - "localhost:9092"
+    # Topics contains specific topic names for different message types
+    topics:
+      # PasswordReset specifies the topic name for password reset messages
+      password_reset: "agent.password.reset"
 
 # Security configuration for authentication and authorization
 security:

@@ -17,6 +17,7 @@ import (
 	pgRepository "agent-service/repository/postgres"
 	"agent-service/usecase"
 	"monorepo/pkg/jwt"
+	"monorepo/pkg/kafka"
 	"monorepo/pkg/logger"
 	"monorepo/pkg/postgres"
 	"monorepo/pkg/redis"
@@ -42,27 +43,27 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Initialize database client
+	// Initialize PostgreSQL client
 	postgresClient, err := postgres.NewPostgresClient(postgres.Config{
-		Host:            cfg.Database.Postgres.Host,
-		Port:            cfg.Database.Postgres.Port,
-		User:            cfg.Database.Postgres.User,
-		Password:        cfg.Database.Postgres.Password,
-		DBName:          cfg.Database.Postgres.DBName,
-		Schema:          cfg.Database.Postgres.Schema,
-		SSLMode:         cfg.Database.Postgres.SSLMode,
-		MaxIdleConns:    cfg.Database.Postgres.MaxIdleConns,
-		MaxOpenConns:    cfg.Database.Postgres.MaxOpenConns,
-		ConnMaxIdleTime: cfg.Database.Postgres.ConnMaxIdleTime,
-		ConnMaxLifetime: cfg.Database.Postgres.ConnMaxLifetime,
-		Debug:           cfg.Database.Postgres.Debug,
+		Host:            cfg.Infrastructure.Postgres.Host,
+		Port:            cfg.Infrastructure.Postgres.Port,
+		User:            cfg.Infrastructure.Postgres.User,
+		Password:        cfg.Infrastructure.Postgres.Password,
+		DBName:          cfg.Infrastructure.Postgres.DBName,
+		Schema:          cfg.Infrastructure.Postgres.Schema,
+		SSLMode:         cfg.Infrastructure.Postgres.SSLMode,
+		MaxIdleConns:    cfg.Infrastructure.Postgres.MaxIdleConns,
+		MaxOpenConns:    cfg.Infrastructure.Postgres.MaxOpenConns,
+		ConnMaxIdleTime: cfg.Infrastructure.Postgres.ConnMaxIdleTime,
+		ConnMaxLifetime: cfg.Infrastructure.Postgres.ConnMaxLifetime,
+		Debug:           cfg.Infrastructure.Postgres.Debug,
 	})
 	if err != nil {
 		appLogger.Error("Failed to connect to database", "error", err)
 		os.Exit(1)
 	}
 
-	if cfg.Database.Postgres.IsUseMigrate {
+	if cfg.Infrastructure.Postgres.IsUseMigrate {
 		// Run database migrations
 		err = postgresClient.Migrate(
 			&model.User{},
@@ -76,14 +77,23 @@ func main() {
 
 	// Initialize Redis client
 	redisClient, redisErr := redis.New(
-		redis.WithAddrs(cfg.Database.Redis.Addrs),
-		redis.WithUsername(cfg.Database.Redis.Username),
-		redis.WithPassword(cfg.Database.Redis.Password),
-		redis.WithDB(cfg.Database.Redis.DB),
-		redis.WithPoolSize(cfg.Database.Redis.PoolSize),
+		redis.WithAddrs(cfg.Infrastructure.Redis.Addrs),
+		redis.WithUsername(cfg.Infrastructure.Redis.Username),
+		redis.WithPassword(cfg.Infrastructure.Redis.Password),
+		redis.WithDB(cfg.Infrastructure.Redis.DB),
+		redis.WithPoolSize(cfg.Infrastructure.Redis.PoolSize),
 	)
 	if redisErr != nil {
 		appLogger.Error("Failed to initialize Redis client", "error", redisErr)
+		os.Exit(1)
+	}
+
+	// Initialize Kafka client
+	kafkaClient, kafkaErr := kafka.New(
+		kafka.WithBrokers(cfg.Infrastructure.Kafka.Brokers...),
+	)
+	if kafkaErr != nil {
+		appLogger.Error("Failed to initialize Kafka client", "error", kafkaErr)
 		os.Exit(1)
 	}
 
@@ -123,7 +133,7 @@ func main() {
 	agentUsecase := usecase.NewAgentUseCase(agentRepo, appLogger)
 
 	// Initialize auth usecase
-	authUsecase := usecase.NewAuthUseCase(userRepo, agentRepo, jwtClient, appLogger)
+	authUsecase := usecase.NewAuthUseCase(userRepo, agentRepo, jwtClient, redisClient, kafkaClient, cfg.Infrastructure.Kafka.Topics.PasswordReset, appLogger)
 
 	// Initialize handlers
 	userHandler := httpDelivery.NewUserHandler(userUsecase, appLogger)

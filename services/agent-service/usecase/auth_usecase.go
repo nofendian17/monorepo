@@ -3,6 +3,9 @@ package usecase
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -11,7 +14,9 @@ import (
 	"agent-service/domain/repository"
 	"monorepo/contracts/agent_service"
 	"monorepo/pkg/jwt"
+	"monorepo/pkg/kafka"
 	"monorepo/pkg/logger"
+	"monorepo/pkg/redis"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -32,6 +37,22 @@ type AuthUseCase interface {
 	// It takes a context for request-scoped values with user claims
 	// Returns a UserResponse with user profile data, or an error if retrieval fails
 	Profile(ctx context.Context) (*agent_service.UserResponse, error)
+	// ForgotPassword initiates the password reset process for a user
+	// It generates a reset token and stores it in Redis
+	// It takes a context and a ForgotPasswordRequest
+	// Returns a ForgotPasswordResponse with a success message, or an error
+	ForgotPassword(ctx context.Context, req agent_service.ForgotPasswordRequest) (*agent_service.ForgotPasswordResponse, error)
+	// ResetPassword resets the user's password using a valid reset token
+	// It validates the token, updates the password, and removes the token from Redis
+	// It takes a context and a ResetPasswordRequest
+	// Returns a ResetPasswordResponse with a success message, or an error
+	ResetPassword(ctx context.Context, req agent_service.ResetPasswordRequest) (*agent_service.ResetPasswordResponse, error)
+}
+
+// PasswordResetMessage represents the message sent to Kafka for password reset
+type PasswordResetMessage struct {
+	Email string `json:"email"`
+	Token string `json:"token"`
 }
 
 // authUseCase implements the AuthUseCase interface
@@ -42,19 +63,28 @@ type authUseCase struct {
 	agentRepo repository.Agent
 	// jwtClient is the JWT client for token generation and validation
 	jwtClient jwt.JWTClient
+	// redisClient is the Redis client for storing reset tokens
+	redisClient redis.RedisClient
+	// kafkaClient is the Kafka client for producing messages
+	kafkaClient kafka.KafkaClient
+	// passwordResetTopic is the Kafka topic for password reset messages
+	passwordResetTopic string
 	// logger is used for logging operations within the usecase
 	logger logger.LoggerInterface
 }
 
 // NewAuthUseCase creates a new instance of authUseCase
-// It takes a User repository implementation, Agent repository implementation, JWT client, and a logger instance
+// It takes a User repository implementation, Agent repository implementation, JWT client, Redis client, Kafka client, password reset topic, and a logger instance
 // Returns an implementation of the AuthUseCase interface
-func NewAuthUseCase(userRepo repository.User, agentRepo repository.Agent, jwtClient jwt.JWTClient, appLogger logger.LoggerInterface) AuthUseCase {
+func NewAuthUseCase(userRepo repository.User, agentRepo repository.Agent, jwtClient jwt.JWTClient, redisClient redis.RedisClient, kafkaClient kafka.KafkaClient, passwordResetTopic string, appLogger logger.LoggerInterface) AuthUseCase {
 	return &authUseCase{
-		userRepo:  userRepo,
-		agentRepo: agentRepo,
-		jwtClient: jwtClient,
-		logger:    appLogger,
+		userRepo:           userRepo,
+		agentRepo:          agentRepo,
+		jwtClient:          jwtClient,
+		redisClient:        redisClient,
+		kafkaClient:        kafkaClient,
+		passwordResetTopic: passwordResetTopic,
+		logger:             appLogger,
 	}
 }
 
@@ -271,4 +301,133 @@ func (uc *authUseCase) Profile(ctx context.Context) (*agent_service.UserResponse
 
 	uc.logger.InfoContext(ctx, "Profile retrieved successfully", "userID", userID)
 	return agent_service.UserModelToResponse(user), nil
+}
+
+// ForgotPassword initiates the password reset process for a user
+// It generates a reset token and stores it in Redis
+// It takes a context and a ForgotPasswordRequest
+// Returns a ForgotPasswordResponse with a success message, or an error
+func (uc *authUseCase) ForgotPassword(ctx context.Context, req agent_service.ForgotPasswordRequest) (*agent_service.ForgotPasswordResponse, error) {
+	uc.logger.InfoContext(ctx, "Forgot password request", "email", req.Email)
+
+	// Get user by email
+	user, err := uc.userRepo.GetByEmail(ctx, req.Email)
+	if err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			uc.logger.WarnContext(ctx, "User not found for forgot password", "email", req.Email)
+			// Don't reveal if user exists or not for security
+			return &agent_service.ForgotPasswordResponse{
+				Message: "If the email exists, a reset link has been sent.",
+			}, nil
+		}
+		uc.logger.ErrorContext(ctx, "Error retrieving user for forgot password", "email", req.Email, "error", err)
+		return nil, fmt.Errorf("error retrieving user: %w", err)
+	}
+
+	// Check if user is active
+	if !user.IsActive {
+		uc.logger.WarnContext(ctx, "User is not active for forgot password", "email", req.Email)
+		// Don't reveal status
+		return &agent_service.ForgotPasswordResponse{
+			Message: "If the email exists, a reset link has been sent.",
+		}, nil
+	}
+
+	// Generate reset token
+	tokenBytes := make([]byte, 32)
+	if _, err := rand.Read(tokenBytes); err != nil {
+		uc.logger.ErrorContext(ctx, "Error generating reset token", "error", err)
+		return nil, fmt.Errorf("error generating reset token: %w", err)
+	}
+	resetToken := hex.EncodeToString(tokenBytes)
+
+	// Store token in Redis with expiration (15 minutes)
+	key := "reset:" + resetToken
+	err = uc.redisClient.Set(ctx, key, user.ID, 15*time.Minute)
+	if err != nil {
+		uc.logger.ErrorContext(ctx, "Error storing reset token in Redis", "userID", user.ID, "error", err)
+		return nil, fmt.Errorf("error storing reset token: %w", err)
+	}
+
+	uc.logger.InfoContext(ctx, "Reset token generated and stored", "userID", user.ID, "token", resetToken)
+
+	// Produce message to Kafka for email sending
+	message := PasswordResetMessage{
+		Email: user.Email,
+		Token: resetToken,
+	}
+	messageBytes, err := json.Marshal(message)
+	if err != nil {
+		uc.logger.ErrorContext(ctx, "Error marshaling password reset message", "userID", user.ID, "error", err)
+		return nil, fmt.Errorf("error marshaling password reset message: %w", err)
+	}
+
+	err = uc.kafkaClient.Produce(ctx, uc.passwordResetTopic, messageBytes)
+	if err != nil {
+		uc.logger.ErrorContext(ctx, "Error producing password reset message to Kafka", "userID", user.ID, "error", err)
+		return nil, fmt.Errorf("error producing password reset message: %w", err)
+	}
+
+	uc.logger.InfoContext(ctx, "Password reset message produced to Kafka", "userID", user.ID)
+
+	// In a real application, an email service would consume from Kafka and send the email
+	// For now, return a generic success message
+	return &agent_service.ForgotPasswordResponse{
+		Message: "If the email exists, a reset link has been sent.",
+	}, nil
+}
+
+// ResetPassword resets the user's password using a valid reset token
+// It validates the token, updates the password, and removes the token from Redis
+// It takes a context and a ResetPasswordRequest
+// Returns a ResetPasswordResponse with a success message, or an error
+func (uc *authUseCase) ResetPassword(ctx context.Context, req agent_service.ResetPasswordRequest) (*agent_service.ResetPasswordResponse, error) {
+	uc.logger.InfoContext(ctx, "Reset password request")
+
+	// Get user ID from Redis
+	key := "reset:" + req.Token
+	userID, err := uc.redisClient.Get(ctx, key)
+	if err != nil {
+		uc.logger.WarnContext(ctx, "Invalid or expired reset token", "token", req.Token)
+		return nil, errors.New("invalid or expired reset token")
+	}
+
+	// Get user by ID
+	user, err := uc.userRepo.GetByID(ctx, userID)
+	if err != nil {
+		uc.logger.ErrorContext(ctx, "Error retrieving user for reset password", "userID", userID, "error", err)
+		return nil, fmt.Errorf("error retrieving user: %w", err)
+	}
+
+	// Check if user is active
+	if !user.IsActive {
+		uc.logger.WarnContext(ctx, "User is not active for reset password", "userID", userID)
+		return nil, errors.New("user account is not active")
+	}
+
+	// Hash the new password
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+	if err != nil {
+		uc.logger.ErrorContext(ctx, "Error hashing password", "userID", userID, "error", err)
+		return nil, fmt.Errorf("error hashing password: %w", err)
+	}
+
+	// Update user password
+	err = uc.userRepo.UpdatePassword(ctx, userID, string(hashedPassword))
+	if err != nil {
+		uc.logger.ErrorContext(ctx, "Error updating password", "userID", userID, "error", err)
+		return nil, fmt.Errorf("error updating password: %w", err)
+	}
+
+	// Delete the reset token from Redis
+	err = uc.redisClient.Del(ctx, key)
+	if err != nil {
+		uc.logger.WarnContext(ctx, "Error deleting reset token from Redis", "userID", userID, "error", err)
+		// Don't fail the operation for this
+	}
+
+	uc.logger.InfoContext(ctx, "Password reset successful", "userID", userID)
+	return &agent_service.ResetPasswordResponse{
+		Message: "Password has been reset successfully",
+	}, nil
 }
