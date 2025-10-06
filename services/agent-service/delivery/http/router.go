@@ -52,23 +52,9 @@ func (r *Router) SetupRoutes() http.Handler {
 			auth.With(JWTMiddleware(r.JWTClient, r.AppLogger, r.AuthHandler.API)).
 				Get("/profile", r.AuthHandler.ProfileHandler)
 		})
-		// User routes
-		api.Route("/users", func(users chi.Router) {
-			users.Post("/", r.Handler.CreateHandler)
-			users.Get("/", r.Handler.ListHandler)
-			users.Get("/{id}", r.Handler.GetByIDHandler)
-			users.Put("/{id}", r.Handler.UpdateHandler)
-			users.Patch("/{id}/status", r.Handler.UpdateStatusHandler)
-			users.Delete("/{id}", r.Handler.DeleteHandler)
-			users.Get("/email/{email}", r.Handler.GetByEmailHandler)
-		})
+
 		// Agent routes
 		api.Route("/agents", func(agents chi.Router) {
-			agents.Post("/", r.AgentHandler.CreateHandler)
-			agents.Get("/", r.AgentHandler.ListHandler)
-			agents.Get("/{id}", r.AgentHandler.GetByIDHandler)
-			agents.Put("/{id}", r.AgentHandler.UpdateHandler)
-			agents.Delete("/{id}", r.AgentHandler.DeleteHandler)
 			// Sub-agent routes (protected by JWT and IATA agent type check)
 			agents.With(JWTMiddleware(r.JWTClient, r.AppLogger, r.AuthHandler.API)).
 				With(IATAAgentMiddleware(r.AppLogger, r.AuthHandler.API)).
@@ -78,5 +64,27 @@ func (r *Router) SetupRoutes() http.Handler {
 				})
 		})
 	})
+
+	router.Route("/internal", func(internal chi.Router) {
+		// Internal agent routes
+		internal.Route("/agents", func(agents chi.Router) {
+			agents.Post("/", r.AgentHandler.CreateHandler)
+			agents.Get("/", r.AgentHandler.ListHandler)
+			agents.Get("/{id}", r.AgentHandler.GetByIDHandler)
+			agents.Put("/{id}", r.AgentHandler.UpdateHandler)
+			agents.Delete("/{id}", r.AgentHandler.DeleteHandler)
+		})
+
+		internal.Route("/users", func(users chi.Router) {
+			users.Post("/", r.Handler.CreateHandler)
+			users.Get("/", r.Handler.ListHandler)
+			users.Get("/{id}", r.Handler.GetByIDHandler)
+			users.Put("/{id}", r.Handler.UpdateHandler)
+			users.Patch("/{id}/status", r.Handler.UpdateStatusHandler)
+			users.Delete("/{id}", r.Handler.DeleteHandler)
+			users.Get("/email/{email}", r.Handler.GetByEmailHandler)
+		})
+	})
+
 	return router
 }
