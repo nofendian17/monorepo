@@ -17,6 +17,10 @@ type Agent interface {
 	// It takes a context for request-scoped values and the agent ID
 	// Returns the agent model and an error if the operation fails
 	GetByID(ctx context.Context, id string) (*model.Agent, error)
+	// GetByEmail retrieves an agent by their email address
+	// It takes a context for request-scoped values and the agent email
+	// Returns the agent model and an error if the operation fails
+	GetByEmail(ctx context.Context, email string) (*model.Agent, error)
 	// GetByParentID retrieves agents by their parent agent ID
 	// It takes a context for request-scoped values and the parent agent ID
 	// Returns a slice of agent pointers and an error if the operation fails

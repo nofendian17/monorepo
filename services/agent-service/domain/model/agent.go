@@ -20,7 +20,7 @@ type Agent struct {
 	ParentAgentID *string        `gorm:"type:char(26);default:null"`
 	Parent        *Agent         `gorm:"foreignKey:ParentAgentID;references:ID"`
 	Children      []Agent        `gorm:"foreignKey:ParentAgentID"`
-	Email         string         `gorm:"type:varchar(255);not null"`
+	Email         string         `gorm:"type:varchar(255);not null;unique"`
 	IsActive      bool           `gorm:"default:false"`
 	CreatedAt     time.Time      `gorm:"autoCreateTime"`
 	UpdatedAt     time.Time      `gorm:"autoUpdateTime"`

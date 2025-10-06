@@ -96,7 +96,16 @@ func (uc *agentUseCase) CreateAgent(ctx context.Context, agent *model.Agent) err
 		return domain.ErrInvalidAgentType
 	}
 
-	// TODO: Email uniqueness check removed - consider database-level unique constraint
+	// Check if email already exists
+	existingAgent, err := uc.agentRepo.GetByEmail(ctx, agent.Email)
+	if err != nil && !errors.Is(err, domain.ErrNotFound) {
+		uc.logger.ErrorContext(ctx, "Error checking email uniqueness", "email", agent.Email, "error", err)
+		return fmt.Errorf("error checking email uniqueness: %w", err)
+	}
+	if existingAgent != nil {
+		uc.logger.WarnContext(ctx, "Agent with this email already exists", "email", agent.Email)
+		return domain.ErrAgentEmailAlreadyExists
+	}
 
 	// If parent agent ID is provided, validate it exists
 	if agent.ParentAgentID != nil {
@@ -179,6 +188,17 @@ func (uc *agentUseCase) UpdateAgent(ctx context.Context, agent *model.Agent) err
 	if agent.AgentType != model.AgentTypeIATA && agent.AgentType != model.AgentTypeSubAgent {
 		uc.logger.WarnContext(ctx, "Invalid agent type", "agentType", agent.AgentType)
 		return domain.ErrInvalidAgentType
+	}
+
+	// Check if email already exists for another agent
+	existingAgent, err := uc.agentRepo.GetByEmail(ctx, agent.Email)
+	if err != nil && !errors.Is(err, domain.ErrNotFound) {
+		uc.logger.ErrorContext(ctx, "Error checking email uniqueness", "email", agent.Email, "error", err)
+		return fmt.Errorf("error checking email uniqueness: %w", err)
+	}
+	if existingAgent != nil && existingAgent.ID != agent.ID {
+		uc.logger.WarnContext(ctx, "Agent with this email already exists", "email", agent.Email, "existingAgentID", existingAgent.ID)
+		return domain.ErrAgentEmailAlreadyExists
 	}
 
 	// If parent agent ID is provided, validate it exists and prevent circular reference

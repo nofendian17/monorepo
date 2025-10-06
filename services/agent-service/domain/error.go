@@ -18,6 +18,10 @@ var (
 		Message: "user with this email already exists",
 		Code:    409, // StatusConflict
 	}
+	ErrAgentEmailAlreadyExists = &AppError{
+		Message: "agent with this email already exists",
+		Code:    409, // StatusConflict
+	}
 	ErrUserNotFound = &AppError{
 		Message: "user not found",
 		Code:    404, // StatusNotFound
