@@ -223,21 +223,20 @@ func (h *CredentialHandler) handleCredentialError(ctx context.Context, w http.Re
 	case err.Error() == domain.ErrCredentialAlreadyExists.Message:
 		h.API.BadRequest(ctx, w, err.Error())
 	default:
-		h.Logger.ErrorContext(ctx, "Unexpected error", "error", err)
-		h.API.InternalServerError(ctx, w, "An unexpected error occurred")
+		h.API.InternalServerError(ctx, w, "Internal server error")
 	}
 }
 
 // convertValidationErrors converts validator errors to API error details
 func (h *CredentialHandler) convertValidationErrors(validationErrors map[string]string) []api.ErrorDetail {
-	details := make([]api.ErrorDetail, 0, len(validationErrors))
+	errorDetails := make([]api.ErrorDetail, 0, len(validationErrors))
 	for field, message := range validationErrors {
-		details = append(details, api.ErrorDetail{
+		errorDetails = append(errorDetails, api.ErrorDetail{
 			Field:   field,
 			Message: message,
 		})
 	}
-	return details
+	return errorDetails
 }
 
 // credentialToResponse converts a model to response

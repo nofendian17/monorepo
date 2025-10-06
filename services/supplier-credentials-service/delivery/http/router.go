@@ -10,13 +10,15 @@ import (
 
 type Router struct {
 	CredentialHandler *CredentialHandler
+	SupplierHandler   *SupplierHandler
 	HealthHandler     *HealthHandler
 	AppLogger         logger.LoggerInterface
 }
 
-func NewRouter(credentialHandler *CredentialHandler, healthHandler *HealthHandler, appLogger logger.LoggerInterface) *Router {
+func NewRouter(credentialHandler *CredentialHandler, supplierHandler *SupplierHandler, healthHandler *HealthHandler, appLogger logger.LoggerInterface) *Router {
 	return &Router{
 		CredentialHandler: credentialHandler,
+		SupplierHandler:   supplierHandler,
 		HealthHandler:     healthHandler,
 		AppLogger:         appLogger,
 	}
@@ -34,14 +36,21 @@ func (r *Router) SetupRoutes() http.Handler {
 	router.Get("/health", r.HealthHandler.HealthCheckHandler)
 
 	router.Route("/api/v1", func(api chi.Router) {
-		// Credentials routes - require X-AgentIATA-ID header
-		api.Route("/credentials", func(credentials chi.Router) {
-			credentials.Use(AgentIATAMiddleware(r.AppLogger))
-			credentials.Post("/", r.CredentialHandler.CreateHandler)
-			credentials.Get("/", r.CredentialHandler.ListHandler)
-			credentials.Get("/{id}", r.CredentialHandler.GetByIDHandler)
-			credentials.Put("/{id}", r.CredentialHandler.UpdateHandler)
-			credentials.Delete("/{id}", r.CredentialHandler.DeleteHandler)
+		// Protected routes - require X-AgentIATA-ID header
+		api.Route("/", func(protected chi.Router) {
+			protected.Use(AgentIATAMiddleware(r.AppLogger))
+
+			// Suppliers routes - require authentication
+			protected.Get("/suppliers", r.SupplierHandler.ListSuppliersHandler)
+
+			// Credentials routes - require authentication
+			protected.Route("/credentials", func(credentials chi.Router) {
+				credentials.Post("/", r.CredentialHandler.CreateHandler)
+				credentials.Get("/", r.CredentialHandler.ListHandler)
+				credentials.Get("/{id}", r.CredentialHandler.GetByIDHandler)
+				credentials.Put("/{id}", r.CredentialHandler.UpdateHandler)
+				credentials.Delete("/{id}", r.CredentialHandler.DeleteHandler)
+			})
 		})
 	})
 
@@ -49,6 +58,11 @@ func (r *Router) SetupRoutes() http.Handler {
 	router.Route("/internal", func(internal chi.Router) {
 		// Internal credentials route - no header validation required for internal calls
 		internal.Get("/credentials", r.CredentialHandler.InternalListHandler)
+
+		// Internal supplier routes - no header validation required for internal calls
+		internal.Get("/supplier", r.SupplierHandler.ListSuppliersHandler)
+		internal.Post("/supplier", r.SupplierHandler.CreateSupplierHandler)
+		internal.Put("/supplier/{id}", r.SupplierHandler.UpdateSupplierHandler)
 	})
 
 	return router

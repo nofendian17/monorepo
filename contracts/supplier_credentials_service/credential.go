@@ -46,3 +46,15 @@ type SupplierResponse struct {
 	SupplierCode string `json:"supplier_code"`
 	SupplierName string `json:"supplier_name"`
 }
+
+// CreateSupplierRequest represents the request payload for creating a supplier
+type CreateSupplierRequest struct {
+	SupplierCode string `json:"supplier_code" validate:"required,min=1,max=50"`
+	SupplierName string `json:"supplier_name" validate:"required,min=1,max=255"`
+}
+
+// UpdateSupplierRequest represents the request payload for updating a supplier
+type UpdateSupplierRequest struct {
+	SupplierCode string `json:"supplier_code" validate:"required,min=1,max=50"`
+	SupplierName string `json:"supplier_name" validate:"required,min=1,max=255"`
+}

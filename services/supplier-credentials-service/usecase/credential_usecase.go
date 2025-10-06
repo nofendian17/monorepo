@@ -36,8 +36,8 @@ type CredentialUseCase interface {
 type credentialUseCase struct {
 	// credentialRepo is the repository interface for credential database operations
 	credentialRepo repository.Credential
-	// supplierRepo is the repository interface for supplier database operations
-	supplierRepo repository.Supplier
+	// supplierUseCase is used to validate supplier existence
+	supplierUseCase SupplierUseCase
 	// logger is used for logging operations within the usecase
 	logger logger.LoggerInterface
 	// encryptionKey is the key used for encrypting/decrypting credentials
@@ -45,12 +45,12 @@ type credentialUseCase struct {
 }
 
 // NewCredentialUseCase creates a new instance of credentialUseCase
-func NewCredentialUseCase(credentialRepo repository.Credential, supplierRepo repository.Supplier, appLogger logger.LoggerInterface, encryptionKey string) CredentialUseCase {
+func NewCredentialUseCase(credentialRepo repository.Credential, supplierUseCase SupplierUseCase, appLogger logger.LoggerInterface, encryptionKey string) CredentialUseCase {
 	return &credentialUseCase{
-		credentialRepo: credentialRepo,
-		supplierRepo:   supplierRepo,
-		logger:         appLogger,
-		encryptionKey:  encryptionKey,
+		credentialRepo:  credentialRepo,
+		supplierUseCase: supplierUseCase,
+		logger:          appLogger,
+		encryptionKey:   encryptionKey,
 	}
 }
 
@@ -145,9 +145,9 @@ func (uc *credentialUseCase) CreateCredential(ctx context.Context, credential *m
 	}
 
 	// Check if supplier exists
-	_, err := uc.supplierRepo.GetByID(ctx, credential.SupplierID)
+	_, err := uc.supplierUseCase.GetSupplierByID(ctx, credential.SupplierID)
 	if err != nil {
-		if errors.Is(err, domain.ErrNotFound) {
+		if errors.Is(err, domain.ErrSupplierNotFound) {
 			uc.logger.WarnContext(ctx, "Supplier not found", "supplierID", credential.SupplierID)
 			return domain.ErrSupplierNotFound
 		}

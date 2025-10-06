@@ -77,14 +77,16 @@ func main() {
 	credentialRepo := pgRepository.NewCredentialRepository(postgresClient.GetDB(), appLogger)
 
 	// Initialize usecase
-	credentialUsecase := usecase.NewCredentialUseCase(credentialRepo, supplierRepo, appLogger, cfg.Security.Encryption.Key)
+	supplierUsecase := usecase.NewSupplierUseCase(supplierRepo, appLogger)
+	credentialUsecase := usecase.NewCredentialUseCase(credentialRepo, supplierUsecase, appLogger, cfg.Security.Encryption.Key)
 
 	// Initialize handlers
 	credentialHandler := httpDelivery.NewCredentialHandler(credentialUsecase, appLogger)
+	supplierHandler := httpDelivery.NewSupplierHandler(supplierUsecase, appLogger)
 	healthHandler := httpDelivery.NewHealthHandler(appLogger)
 
 	// Initialize router
-	router := httpDelivery.NewRouter(credentialHandler, healthHandler, appLogger)
+	router := httpDelivery.NewRouter(credentialHandler, supplierHandler, healthHandler, appLogger)
 
 	// Setup routes
 	httpHandler := router.SetupRoutes()
