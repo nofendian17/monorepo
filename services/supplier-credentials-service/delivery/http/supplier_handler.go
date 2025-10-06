@@ -203,6 +203,29 @@ func (h *SupplierHandler) UpdateSupplierHandler(w http.ResponseWriter, r *http.R
 	h.API.Success(ctx, w, response)
 }
 
+// DeleteSupplierHandler handles HTTP requests to delete a supplier
+func (h *SupplierHandler) DeleteSupplierHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	h.Logger.InfoContext(ctx, "Delete supplier handler called")
+
+	idStr := chi.URLParam(r, "id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil || id <= 0 {
+		h.Logger.ErrorContext(ctx, "Invalid supplier ID", "id", idStr, "error", err)
+		h.API.BadRequest(ctx, w, "Invalid supplier ID")
+		return
+	}
+
+	if err := h.SupplierUseCase.DeleteSupplier(ctx, id); err != nil {
+		h.Logger.ErrorContext(ctx, "Error deleting supplier", "id", id, "error", err)
+		h.handleSupplierError(ctx, w, err)
+		return
+	}
+
+	h.Logger.InfoContext(ctx, "Supplier deleted successfully in handler", "id", id)
+	h.API.Success(ctx, w, map[string]string{"message": "Supplier deleted successfully"})
+}
+
 // handleSupplierError handles supplier-related errors consistently
 func (h *SupplierHandler) handleSupplierError(ctx context.Context, w http.ResponseWriter, err error) {
 	switch {

@@ -63,6 +63,7 @@ func (r *Router) SetupRoutes() http.Handler {
 		internal.Get("/supplier", r.SupplierHandler.ListSuppliersHandler)
 		internal.Post("/supplier", r.SupplierHandler.CreateSupplierHandler)
 		internal.Put("/supplier/{id}", r.SupplierHandler.UpdateSupplierHandler)
+		internal.Delete("/supplier/{id}", r.SupplierHandler.DeleteSupplierHandler)
 	})
 
 	return router

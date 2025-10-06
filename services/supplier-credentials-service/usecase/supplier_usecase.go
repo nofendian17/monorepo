@@ -18,6 +18,8 @@ type SupplierUseCase interface {
 	CreateSupplier(ctx context.Context, supplier *model.Supplier) error
 	// UpdateSupplier modifies an existing supplier
 	UpdateSupplier(ctx context.Context, supplier *model.Supplier) error
+	// DeleteSupplier removes a supplier
+	DeleteSupplier(ctx context.Context, id int) error
 	// ListSuppliers retrieves a paginated list of suppliers
 	ListSuppliers(ctx context.Context, offset, limit int) ([]*model.Supplier, int, error)
 	// GetSupplierByID retrieves a supplier by ID
@@ -158,4 +160,30 @@ func (uc *supplierUseCase) GetSupplierByID(ctx context.Context, id int) (*model.
 
 	uc.logger.InfoContext(ctx, "Supplier retrieved by ID in usecase", "id", supplier.ID)
 	return supplier, nil
+}
+
+// DeleteSupplier removes a supplier
+func (uc *supplierUseCase) DeleteSupplier(ctx context.Context, id int) error {
+	uc.logger.InfoContext(ctx, "Deleting supplier in usecase", "id", id)
+
+	// Check if supplier exists first
+	_, err := uc.supplierRepo.GetByID(ctx, id)
+	if err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			uc.logger.WarnContext(ctx, "Supplier not found for deletion", "id", id)
+			return domain.ErrSupplierNotFound
+		}
+		uc.logger.ErrorContext(ctx, "Error checking supplier existence before deletion", "id", id, "error", err)
+		return fmt.Errorf("error checking supplier existence: %w", err)
+	}
+
+	// Delete the supplier
+	err = uc.supplierRepo.Delete(ctx, id)
+	if err != nil {
+		uc.logger.ErrorContext(ctx, "Error deleting supplier", "id", id, "error", err)
+		return fmt.Errorf("error deleting supplier: %w", err)
+	}
+
+	uc.logger.InfoContext(ctx, "Supplier deleted successfully in usecase", "id", id)
+	return nil
 }
