@@ -4,6 +4,7 @@ package http
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strconv"
 
@@ -229,13 +230,13 @@ func (h *SupplierHandler) DeleteSupplierHandler(w http.ResponseWriter, r *http.R
 // handleSupplierError handles supplier-related errors consistently
 func (h *SupplierHandler) handleSupplierError(ctx context.Context, w http.ResponseWriter, err error) {
 	switch {
-	case err.Error() == domain.ErrSupplierNotFound.Message:
+	case errors.Is(err, domain.ErrSupplierNotFound):
 		h.API.NotFound(ctx, w, err.Error())
-	case err.Error() == domain.ErrSupplierCodeRequired.Message:
+	case errors.Is(err, domain.ErrSupplierCodeRequired):
 		h.API.BadRequest(ctx, w, err.Error())
-	case err.Error() == domain.ErrSupplierNameRequired.Message:
+	case errors.Is(err, domain.ErrSupplierNameRequired):
 		h.API.BadRequest(ctx, w, err.Error())
-	case err.Error() == domain.ErrSupplierCodeAlreadyExists.Message:
+	case errors.Is(err, domain.ErrSupplierCodeAlreadyExists):
 		h.API.Conflict(ctx, w, err.Error())
 	default:
 		h.API.InternalServerError(ctx, w, "Internal server error")

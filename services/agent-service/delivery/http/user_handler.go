@@ -4,6 +4,7 @@ package http
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strconv"
 
@@ -84,13 +85,13 @@ func (h *UserHandler) CreateHandler(w http.ResponseWriter, r *http.Request) {
 // handleUserError handles user-related errors consistently
 func (h *UserHandler) handleUserError(ctx context.Context, w http.ResponseWriter, err error) {
 	switch {
-	case err.Error() == domain.ErrUserNotFound.Message:
+	case errors.Is(err, domain.ErrUserNotFound):
 		h.API.NotFound(ctx, w, err.Error())
-	case err.Error() == domain.ErrInvalidID.Message:
+	case errors.Is(err, domain.ErrInvalidID):
 		h.API.BadRequest(ctx, w, err.Error())
-	case err.Error() == domain.ErrEmailRequired.Message:
+	case errors.Is(err, domain.ErrEmailRequired):
 		h.API.BadRequest(ctx, w, err.Error())
-	case err.Error() == domain.ErrEmailAlreadyExists.Message:
+	case errors.Is(err, domain.ErrEmailAlreadyExists):
 		h.API.BadRequest(ctx, w, domain.ErrEmailAlreadyExists.Message)
 	default:
 		h.Logger.ErrorContext(ctx, "Unexpected error", "error", err)

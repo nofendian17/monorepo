@@ -4,6 +4,7 @@ package http
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 
 	"monorepo/contracts/supplier_credentials_service"
@@ -208,19 +209,19 @@ func (h *CredentialHandler) InternalListHandler(w http.ResponseWriter, r *http.R
 // handleCredentialError handles credential-related errors consistently
 func (h *CredentialHandler) handleCredentialError(ctx context.Context, w http.ResponseWriter, err error) {
 	switch {
-	case err.Error() == domain.ErrCredentialNotFound.Message:
+	case errors.Is(err, domain.ErrCredentialNotFound):
 		h.API.NotFound(ctx, w, err.Error())
-	case err.Error() == domain.ErrSupplierNotFound.Message:
+	case errors.Is(err, domain.ErrSupplierNotFound):
 		h.API.NotFound(ctx, w, err.Error())
-	case err.Error() == domain.ErrInvalidID.Message:
+	case errors.Is(err, domain.ErrInvalidID):
 		h.API.BadRequest(ctx, w, err.Error())
-	case err.Error() == domain.ErrIataAgentIDRequired.Message:
+	case errors.Is(err, domain.ErrIataAgentIDRequired):
 		h.API.BadRequest(ctx, w, err.Error())
-	case err.Error() == domain.ErrSupplierIDRequired.Message:
+	case errors.Is(err, domain.ErrSupplierIDRequired):
 		h.API.BadRequest(ctx, w, err.Error())
-	case err.Error() == domain.ErrCredentialsRequired.Message:
+	case errors.Is(err, domain.ErrCredentialsRequired):
 		h.API.BadRequest(ctx, w, err.Error())
-	case err.Error() == domain.ErrCredentialAlreadyExists.Message:
+	case errors.Is(err, domain.ErrCredentialAlreadyExists):
 		h.API.BadRequest(ctx, w, err.Error())
 	default:
 		h.API.InternalServerError(ctx, w, "Internal server error")

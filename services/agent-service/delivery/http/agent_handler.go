@@ -4,6 +4,7 @@ package http
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strconv"
 
@@ -92,23 +93,23 @@ func (h *AgentHandler) CreateHandler(w http.ResponseWriter, r *http.Request) {
 // handleAgentError handles agent-related errors consistently
 func (h *AgentHandler) handleAgentError(ctx context.Context, w http.ResponseWriter, err error) {
 	switch {
-	case err.Error() == domain.ErrAgentNotFound.Message:
+	case errors.Is(err, domain.ErrAgentNotFound):
 		h.API.NotFound(ctx, w, err.Error())
-	case err.Error() == domain.ErrInvalidID.Message:
+	case errors.Is(err, domain.ErrInvalidID):
 		h.API.BadRequest(ctx, w, err.Error())
-	case err.Error() == domain.ErrEmailRequired.Message:
+	case errors.Is(err, domain.ErrEmailRequired):
 		h.API.BadRequest(ctx, w, err.Error())
-	case err.Error() == domain.ErrAgentNameRequired.Message:
+	case errors.Is(err, domain.ErrAgentNameRequired):
 		h.API.BadRequest(ctx, w, err.Error())
-	case err.Error() == domain.ErrAgentTypeRequired.Message:
+	case errors.Is(err, domain.ErrAgentTypeRequired):
 		h.API.BadRequest(ctx, w, err.Error())
-	case err.Error() == domain.ErrInvalidAgentType.Message:
+	case errors.Is(err, domain.ErrInvalidAgentType):
 		h.API.BadRequest(ctx, w, err.Error())
-	case err.Error() == domain.ErrParentAgentNotFound.Message:
+	case errors.Is(err, domain.ErrParentAgentNotFound):
 		h.API.NotFound(ctx, w, err.Error())
-	case err.Error() == domain.ErrCircularReference.Message:
+	case errors.Is(err, domain.ErrCircularReference):
 		h.API.BadRequest(ctx, w, err.Error())
-	case err.Error() == domain.ErrAgentHasChildren.Message:
+	case errors.Is(err, domain.ErrAgentHasChildren):
 		h.API.BadRequest(ctx, w, err.Error())
 	default:
 		h.Logger.ErrorContext(ctx, "Unexpected error", "error", err)
@@ -341,9 +342,9 @@ func (h *AgentHandler) CreateSubAgentHandler(w http.ResponseWriter, r *http.Requ
 	agent, user, err := h.AgentUseCase.CreateSubAgentWithUser(ctx, parentID, &req)
 	if err != nil {
 		switch {
-		case err.Error() == domain.ErrInvalidID.Message:
+		case errors.Is(err, domain.ErrInvalidID):
 			h.API.BadRequest(ctx, w, err.Error())
-		case err.Error() == domain.ErrParentAgentNotFound.Message:
+		case errors.Is(err, domain.ErrParentAgentNotFound):
 			h.API.NotFound(ctx, w, err.Error())
 		default:
 			h.Logger.ErrorContext(ctx, "Unexpected error during sub-agent with user creation", "parent_id", parentID, "error", err)

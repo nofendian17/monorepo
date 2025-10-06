@@ -12,6 +12,14 @@ func (e *AppError) Error() string {
 	return e.Message
 }
 
+// Is implements the errors.Is interface for proper error comparison
+func (e *AppError) Is(target error) bool {
+	if targetErr, ok := target.(*AppError); ok {
+		return e.Message == targetErr.Message && e.Code == targetErr.Code
+	}
+	return false
+}
+
 // Custom error types
 var (
 	ErrSupplierNotFound = &AppError{
