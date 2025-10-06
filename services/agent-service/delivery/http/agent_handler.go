@@ -29,8 +29,6 @@ type AgentHandler struct {
 }
 
 // NewAgentHandler creates a new instance of AgentHandler
-// It takes an AgentUseCase implementation and a logger instance
-// Returns a pointer to an AgentHandler
 func NewAgentHandler(agentUseCase usecase.AgentUseCase, logger logger.LoggerInterface) *AgentHandler {
 	return &AgentHandler{
 		AgentUseCase: agentUseCase,
@@ -40,11 +38,6 @@ func NewAgentHandler(agentUseCase usecase.AgentUseCase, logger logger.LoggerInte
 }
 
 // CreateHandler handles HTTP requests to create a new agent
-// It expects a JSON payload with agent data in the request body
-// Returns a 201 status code with the created agent on success
-// Returns a 400 status code for invalid request data
-// Returns a 422 status code for validation errors
-// Returns a 500 status code for internal server errors
 func (h *AgentHandler) CreateHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	h.Logger.InfoContext(ctx, "Create agent handler called")
@@ -90,7 +83,7 @@ func (h *AgentHandler) CreateHandler(w http.ResponseWriter, r *http.Request) {
 	h.API.Created(ctx, w, agent_service.AgentModelToResponse(agent))
 }
 
-// handleAgentError handles agent-related errors consistently
+// handleAgentError handles agent-related errors
 func (h *AgentHandler) handleAgentError(ctx context.Context, w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, domain.ErrAgentNotFound):
@@ -117,12 +110,7 @@ func (h *AgentHandler) handleAgentError(ctx context.Context, w http.ResponseWrit
 	}
 }
 
-// GetByIDHandler handles HTTP requests to retrieve an agent by their ID
-// It expects the agent ID as a URL parameter
-// Returns a 200 status code with the agent data on success
-// Returns a 400 status code for invalid ID format
-// Returns a 404 status code if the agent is not found
-// Returns a 500 status code for internal server errors
+// GetByIDHandler handles HTTP requests to retrieve an agent by ID
 func (h *AgentHandler) GetByIDHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	h.Logger.InfoContext(ctx, "Get agent by ID handler called")
@@ -145,12 +133,6 @@ func (h *AgentHandler) GetByIDHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // UpdateHandler handles HTTP requests to update an existing agent
-// It expects the agent ID as a URL parameter and agent data in the request body
-// Returns a 200 status code with the updated agent on success
-// Returns a 400 status code for invalid ID format or request data
-// Returns a 422 status code for validation errors
-// Returns a 404 status code if the agent is not found
-// Returns a 500 status code for internal server errors
 func (h *AgentHandler) UpdateHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	h.Logger.InfoContext(ctx, "Update agent handler called")
@@ -207,11 +189,6 @@ func (h *AgentHandler) UpdateHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // DeleteHandler handles HTTP requests to delete an agent
-// It expects the agent ID as a URL parameter
-// Returns a 200 status code with a success message on success
-// Returns a 400 status code for invalid ID format
-// Returns a 404 status code if the agent is not found
-// Returns a 500 status code for internal server errors
 func (h *AgentHandler) DeleteHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	h.Logger.InfoContext(ctx, "Delete agent handler called")
@@ -233,9 +210,6 @@ func (h *AgentHandler) DeleteHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // ListHandler handles HTTP requests to list agents with pagination
-// It expects optional 'offset' and 'limit' query parameters
-// Returns a 200 status code with a list of agents on success
-// Returns a 500 status code for internal server errors
 func (h *AgentHandler) ListHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	h.Logger.InfoContext(ctx, "List agents handler called")
@@ -310,14 +284,7 @@ func (h *AgentHandler) ListHandler(w http.ResponseWriter, r *http.Request) {
 	h.API.SuccessWithMeta(ctx, w, agent_service.AgentModelsToResponses(agents), meta)
 }
 
-// CreateSubAgentHandler handles HTTP requests to create a new sub-agent with an associated user
-// It expects the parent agent ID as a URL parameter and sub-agent with user data in the request body
-// The sub-agent will have AgentType set to SUB_AGENT and ParentAgentID set to the URL parameter
-// Returns a 201 status code with the created sub-agent and user on success
-// Returns a 400 status code for invalid request data
-// Returns a 422 status code for validation errors
-// Returns a 404 status code if the parent agent is not found
-// Returns a 500 status code for internal server errors
+// CreateSubAgentHandler handles HTTP requests to create a sub-agent with user
 func (h *AgentHandler) CreateSubAgentHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	parentID := chi.URLParam(r, "id")
@@ -363,12 +330,7 @@ func (h *AgentHandler) CreateSubAgentHandler(w http.ResponseWriter, r *http.Requ
 	h.API.Created(ctx, w, response)
 }
 
-// ListSubAgentsHandler handles HTTP requests to list all sub-agents of a parent agent
-// It expects the parent agent ID as a URL parameter
-// Returns a 200 status code with a list of sub-agents on success
-// Returns a 400 status code for invalid parent ID format
-// Returns a 404 status code if the parent agent is not found
-// Returns a 500 status code for internal server errors
+// ListSubAgentsHandler handles HTTP requests to list sub-agents of a parent agent
 func (h *AgentHandler) ListSubAgentsHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	parentID := chi.URLParam(r, "id")
@@ -401,7 +363,7 @@ func (h *AgentHandler) ListSubAgentsHandler(w http.ResponseWriter, r *http.Reque
 	h.API.Success(ctx, w, agent_service.AgentModelsToResponses(subAgents))
 }
 
-// convertValidationErrors converts validator errors to API error details
+// convertValidationErrors converts validation errors to API format
 func (h *AgentHandler) convertValidationErrors(validationErrors map[string]string) []api.ErrorDetail {
 	details := make([]api.ErrorDetail, 0, len(validationErrors))
 	for field, message := range validationErrors {

@@ -113,7 +113,7 @@ func (h *SupplierHandler) ListSuppliersHandler(w http.ResponseWriter, r *http.Re
 	h.API.SuccessWithMeta(ctx, w, supplierModelsToResponses(suppliers), meta)
 }
 
-// CreateSupplierHandler handles HTTP requests to create a new supplier
+// CreateSupplierHandler handles HTTP requests to create a supplier
 func (h *SupplierHandler) CreateSupplierHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	h.Logger.InfoContext(ctx, "Create supplier handler called")
@@ -154,7 +154,7 @@ func (h *SupplierHandler) CreateSupplierHandler(w http.ResponseWriter, r *http.R
 	h.API.Created(ctx, w, response)
 }
 
-// UpdateSupplierHandler handles HTTP requests to update an existing supplier
+// UpdateSupplierHandler handles HTTP requests to update a supplier
 func (h *SupplierHandler) UpdateSupplierHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	h.Logger.InfoContext(ctx, "Update supplier handler called")
@@ -227,7 +227,7 @@ func (h *SupplierHandler) DeleteSupplierHandler(w http.ResponseWriter, r *http.R
 	h.API.Success(ctx, w, map[string]string{"message": "Supplier deleted successfully"})
 }
 
-// handleSupplierError handles supplier-related errors consistently
+// handleSupplierError handles supplier-related errors
 func (h *SupplierHandler) handleSupplierError(ctx context.Context, w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, domain.ErrSupplierNotFound):
@@ -243,7 +243,7 @@ func (h *SupplierHandler) handleSupplierError(ctx context.Context, w http.Respon
 	}
 }
 
-// convertValidationErrors converts validator errors to API error details
+// convertValidationErrors converts validation errors to API format
 func (h *SupplierHandler) convertValidationErrors(validationErrors map[string]string) []api.ErrorDetail {
 	errorDetails := make([]api.ErrorDetail, 0, len(validationErrors))
 	for field, message := range validationErrors {
@@ -255,7 +255,7 @@ func (h *SupplierHandler) convertValidationErrors(validationErrors map[string]st
 	return errorDetails
 }
 
-// supplierModelsToResponses converts supplier models to response structs
+// supplierModelsToResponses converts supplier models to response format
 func supplierModelsToResponses(suppliers []*model.Supplier) []*supplier_credentials_service.SupplierResponse {
 	responses := make([]*supplier_credentials_service.SupplierResponse, len(suppliers))
 	for i, supplier := range suppliers {

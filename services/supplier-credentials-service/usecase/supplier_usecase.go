@@ -42,7 +42,7 @@ func NewSupplierUseCase(supplierRepo repository.Supplier, appLogger logger.Logge
 	}
 }
 
-// CreateSupplier adds a new supplier
+// CreateSupplier creates a new supplier
 func (uc *supplierUseCase) CreateSupplier(ctx context.Context, supplier *model.Supplier) error {
 	uc.logger.InfoContext(ctx, "Creating supplier in usecase", "code", supplier.SupplierCode, "name", supplier.SupplierName)
 
@@ -77,7 +77,7 @@ func (uc *supplierUseCase) CreateSupplier(ctx context.Context, supplier *model.S
 	return nil
 }
 
-// UpdateSupplier modifies an existing supplier
+// UpdateSupplier updates an existing supplier
 func (uc *supplierUseCase) UpdateSupplier(ctx context.Context, supplier *model.Supplier) error {
 	uc.logger.InfoContext(ctx, "Updating supplier in usecase", "id", supplier.ID, "code", supplier.SupplierCode, "name", supplier.SupplierName)
 
@@ -130,7 +130,7 @@ func (uc *supplierUseCase) UpdateSupplier(ctx context.Context, supplier *model.S
 	return nil
 }
 
-// ListSuppliers retrieves a paginated list of suppliers
+// ListSuppliers returns a paginated list of suppliers
 func (uc *supplierUseCase) ListSuppliers(ctx context.Context, offset, limit int) ([]*model.Supplier, int, error) {
 	uc.logger.InfoContext(ctx, "Listing suppliers in usecase", "offset", offset, "limit", limit)
 
@@ -162,7 +162,7 @@ func (uc *supplierUseCase) GetSupplierByID(ctx context.Context, id int) (*model.
 	return supplier, nil
 }
 
-// DeleteSupplier removes a supplier
+// DeleteSupplier deletes a supplier
 func (uc *supplierUseCase) DeleteSupplier(ctx context.Context, id int) error {
 	uc.logger.InfoContext(ctx, "Deleting supplier in usecase", "id", id)
 

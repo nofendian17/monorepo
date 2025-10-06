@@ -23,8 +23,8 @@ type userRepository struct {
 
 // NewUserRepository creates a new instance of userRepository
 // It takes a GORM database instance and a logger instance
-// Returns an implementation of the User repository interface
-func NewUserRepository(db *gorm.DB, logger logger.LoggerInterface) repository.User {
+// Returns an implementation of the TransactionalUser repository interface
+func NewUserRepository(db *gorm.DB, logger logger.LoggerInterface) repository.TransactionalUser {
 	return &userRepository{
 		db:     db,
 		logger: logger,
@@ -36,7 +36,14 @@ func NewUserRepository(db *gorm.DB, logger logger.LoggerInterface) repository.Us
 // Returns an error if the operation fails
 func (r *userRepository) Create(ctx context.Context, user *model.User) error {
 	r.logger.InfoContext(ctx, "Creating user", "email", user.Email)
-	if err := r.db.WithContext(ctx).Create(user).Error; err != nil {
+
+	// Check if there's a transaction in the context
+	db := r.db
+	if tx, ok := ctx.Value("tx").(*gorm.DB); ok {
+		db = tx
+	}
+
+	if err := db.WithContext(ctx).Create(user).Error; err != nil {
 		r.logger.ErrorContext(ctx, "Failed to create user", "email", user.Email, "error", err)
 		return fmt.Errorf("failed to create user: %w", err)
 	}
@@ -181,4 +188,16 @@ func (r *userRepository) GetActiveUsers(ctx context.Context) ([]*model.User, err
 	}
 	r.logger.InfoContext(ctx, "Active users retrieved", "count", len(users))
 	return users, nil
+}
+
+// ExecuteInTransaction executes a function within a database transaction
+// The function receives a transaction context that should be used for all operations
+// Returns an error if the transaction fails or if the function returns an error
+func (r *userRepository) ExecuteInTransaction(ctx context.Context, fn func(txCtx context.Context) error) error {
+	r.logger.InfoContext(ctx, "Executing operation in transaction")
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		// Create a context that carries the transaction
+		txCtx := context.WithValue(ctx, "tx", tx)
+		return fn(txCtx)
+	})
 }

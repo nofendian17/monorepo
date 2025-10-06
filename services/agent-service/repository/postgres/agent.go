@@ -23,8 +23,8 @@ type agentRepository struct {
 
 // NewAgentRepository creates a new instance of agentRepository
 // It takes a GORM database instance and a logger instance
-// Returns an implementation of the Agent repository interface
-func NewAgentRepository(db *gorm.DB, logger logger.LoggerInterface) repository.Agent {
+// Returns an implementation of the TransactionalAgent repository interface
+func NewAgentRepository(db *gorm.DB, logger logger.LoggerInterface) repository.TransactionalAgent {
 	return &agentRepository{
 		db:     db,
 		logger: logger,
@@ -32,11 +32,16 @@ func NewAgentRepository(db *gorm.DB, logger logger.LoggerInterface) repository.A
 }
 
 // Create adds a new agent to the database
-// It takes a context for request-scoped values and a pointer to an Agent model
-// Returns an error if the operation fails
 func (r *agentRepository) Create(ctx context.Context, agent *model.Agent) error {
 	r.logger.InfoContext(ctx, "Creating agent", "email", agent.Email)
-	if err := r.db.WithContext(ctx).Create(agent).Error; err != nil {
+
+	// Check if there's a transaction in the context
+	db := r.db
+	if tx, ok := ctx.Value("tx").(*gorm.DB); ok {
+		db = tx
+	}
+
+	if err := db.WithContext(ctx).Create(agent).Error; err != nil {
 		r.logger.ErrorContext(ctx, "Failed to create agent", "email", agent.Email, "error", err)
 		return fmt.Errorf("failed to create agent: %w", err)
 	}
@@ -63,8 +68,6 @@ func (r *agentRepository) GetByID(ctx context.Context, id string) (*model.Agent,
 }
 
 // GetByEmail retrieves an agent by their email address
-// It takes a context for request-scoped values and the agent email
-// Returns the agent model and an error if the operation fails
 func (r *agentRepository) GetByEmail(ctx context.Context, email string) (*model.Agent, error) {
 	r.logger.InfoContext(ctx, "Getting agent by email", "email", email)
 	var agent model.Agent
@@ -81,8 +84,6 @@ func (r *agentRepository) GetByEmail(ctx context.Context, email string) (*model.
 }
 
 // Update modifies an existing agent in the database
-// It takes a context for request-scoped values and a pointer to an Agent model
-// Returns an error if the operation fails
 func (r *agentRepository) Update(ctx context.Context, agent *model.Agent) error {
 	r.logger.InfoContext(ctx, "Updating agent", "id", agent.ID, "email", agent.Email)
 	if err := r.db.WithContext(ctx).Model(&model.Agent{}).Where("id = ?", agent.ID).Updates(agent).Error; err != nil {
@@ -154,4 +155,16 @@ func (r *agentRepository) GetByParentID(ctx context.Context, parentID string) ([
 	}
 	r.logger.InfoContext(ctx, "Agents retrieved by parent ID", "count", len(agents), "parentID", parentID)
 	return agents, nil
+}
+
+// ExecuteInTransaction executes a function within a database transaction
+// The function receives a transaction context that should be used for all operations
+// Returns an error if the transaction fails or if the function returns an error
+func (r *agentRepository) ExecuteInTransaction(ctx context.Context, fn func(txCtx context.Context) error) error {
+	r.logger.InfoContext(ctx, "Executing operation in transaction")
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		// Create a context that carries the transaction
+		txCtx := context.WithValue(ctx, "tx", tx)
+		return fn(txCtx)
+	})
 }

@@ -37,7 +37,7 @@ func NewCredentialHandler(credentialUseCase usecase.CredentialUseCase, logger lo
 	}
 }
 
-// CreateHandler handles HTTP requests to create a new credential
+// CreateHandler handles HTTP requests to create a credential
 func (h *CredentialHandler) CreateHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	h.Logger.InfoContext(ctx, "Create credential handler called")
@@ -75,7 +75,7 @@ func (h *CredentialHandler) CreateHandler(w http.ResponseWriter, r *http.Request
 	h.API.Created(ctx, w, h.credentialToResponse(credential))
 }
 
-// ListHandler handles HTTP requests to list credentials for the authenticated agent
+// ListHandler handles HTTP requests to list credentials
 func (h *CredentialHandler) ListHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	h.Logger.InfoContext(ctx, "List credentials handler called")
@@ -128,7 +128,7 @@ func (h *CredentialHandler) GetByIDHandler(w http.ResponseWriter, r *http.Reques
 	h.API.Success(ctx, w, h.credentialToResponse(credential))
 }
 
-// UpdateHandler handles HTTP requests to update an existing credential
+// UpdateHandler handles HTTP requests to update a credential
 func (h *CredentialHandler) UpdateHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	h.Logger.InfoContext(ctx, "Update credential handler called")
@@ -206,7 +206,7 @@ func (h *CredentialHandler) InternalListHandler(w http.ResponseWriter, r *http.R
 	h.API.Success(ctx, w, response)
 }
 
-// handleCredentialError handles credential-related errors consistently
+// handleCredentialError handles credential-related errors
 func (h *CredentialHandler) handleCredentialError(ctx context.Context, w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, domain.ErrCredentialNotFound):
@@ -228,7 +228,7 @@ func (h *CredentialHandler) handleCredentialError(ctx context.Context, w http.Re
 	}
 }
 
-// convertValidationErrors converts validator errors to API error details
+// convertValidationErrors converts validation errors to API format
 func (h *CredentialHandler) convertValidationErrors(validationErrors map[string]string) []api.ErrorDetail {
 	errorDetails := make([]api.ErrorDetail, 0, len(validationErrors))
 	for field, message := range validationErrors {
@@ -240,7 +240,7 @@ func (h *CredentialHandler) convertValidationErrors(validationErrors map[string]
 	return errorDetails
 }
 
-// credentialToResponse converts a model to response
+// credentialToResponse converts a model to response format
 func (h *CredentialHandler) credentialToResponse(cred *model.AgentSupplierCredential) *supplier_credentials_service.CredentialResponse {
 	response := &supplier_credentials_service.CredentialResponse{
 		ID:          cred.ID,

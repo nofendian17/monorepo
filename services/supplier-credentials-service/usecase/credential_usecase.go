@@ -124,7 +124,7 @@ func (uc *credentialUseCase) decrypt(ciphertext string) (string, error) {
 	return string(plaintext), nil
 }
 
-// CreateCredential adds a new supplier credential for an agent
+// CreateCredential creates a new supplier credential for an agent
 func (uc *credentialUseCase) CreateCredential(ctx context.Context, credential *model.AgentSupplierCredential) error {
 	uc.logger.InfoContext(ctx, "Creating credential in usecase", "agentID", credential.IataAgentID, "supplierID", credential.SupplierID)
 
@@ -183,7 +183,7 @@ func (uc *credentialUseCase) CreateCredential(ctx context.Context, credential *m
 	return nil
 }
 
-// GetCredentialByID retrieves a credential by its ID
+// GetCredentialByID retrieves a credential by ID
 func (uc *credentialUseCase) GetCredentialByID(ctx context.Context, id string) (*model.AgentSupplierCredential, error) {
 	uc.logger.InfoContext(ctx, "Getting credential by ID in usecase", "id", id)
 	if id == "" {
@@ -213,7 +213,7 @@ func (uc *credentialUseCase) GetCredentialByID(ctx context.Context, id string) (
 	return credential, nil
 }
 
-// GetCredentialsByAgentID retrieves all credentials for an agent
+// GetCredentialsByAgentID retrieves credentials for an agent
 func (uc *credentialUseCase) GetCredentialsByAgentID(ctx context.Context, agentID string) ([]*model.AgentSupplierCredential, error) {
 	uc.logger.InfoContext(ctx, "Getting credentials by agent ID in usecase", "agentID", agentID)
 	if agentID == "" {
@@ -265,7 +265,7 @@ func (uc *credentialUseCase) GetAllCredentials(ctx context.Context) ([]*model.Ag
 	return credentials, nil
 }
 
-// UpdateCredential modifies an existing credential
+// UpdateCredential updates an existing credential
 func (uc *credentialUseCase) UpdateCredential(ctx context.Context, credential *model.AgentSupplierCredential) error {
 	uc.logger.InfoContext(ctx, "Updating credential in usecase", "id", credential.ID, "agentID", credential.IataAgentID)
 
@@ -312,7 +312,7 @@ func (uc *credentialUseCase) UpdateCredential(ctx context.Context, credential *m
 	return nil
 }
 
-// DeleteCredential removes a credential
+// DeleteCredential deletes a credential
 func (uc *credentialUseCase) DeleteCredential(ctx context.Context, id string) error {
 	uc.logger.InfoContext(ctx, "Deleting credential in usecase", "id", id)
 	if id == "" {

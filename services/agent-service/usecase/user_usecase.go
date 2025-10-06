@@ -14,44 +14,16 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-// UserUseCase defines the interface for user-related business operations
-// It provides methods for CRUD operations and listing users with business logic
+// UserUseCase defines business operations for users
 type UserUseCase interface {
-	// CreateUser adds a new user with business validation
-	// It takes a context for request-scoped values and a pointer to a User model
-	// Returns an error if the operation fails
 	CreateUser(ctx context.Context, user *model.User) error
-	// GetUserByID retrieves a user by their unique identifier
-	// It takes a context for request-scoped values and the user ID
-	// Returns the user model and an error if the operation fails
 	GetUserByID(ctx context.Context, id string) (*model.User, error)
-	// GetUserByEmail retrieves a user by their email address
-	// It takes a context for request-scoped values and the email address
-	// Returns the user model and an error if the operation fails
 	GetUserByEmail(ctx context.Context, email string) (*model.User, error)
-	// UpdateUser modifies an existing user with business validation
-	// It takes a context for request-scoped values and a pointer to a User model
-	// Returns an error if the operation fails
 	UpdateUser(ctx context.Context, user *model.User) error
-	// UpdateUserStatus updates the active status of a user
-	// It takes a context for request-scoped values, user ID, and the new active status
-	// Returns an error if the operation fails
 	UpdateUserStatus(ctx context.Context, id string, isActive bool) error
-	// DeleteUser removes a user from the system
-	// It takes a context for request-scoped values and the user ID
-	// Returns an error if the operation fails
 	DeleteUser(ctx context.Context, id string) error
-	// GetUsersByAgentID retrieves users by their associated agent ID
-	// It takes a context for request-scoped values and the agent ID
-	// Returns a slice of user pointers and an error if the operation fails
 	GetUsersByAgentID(ctx context.Context, agentID string) ([]*model.User, error)
-	// GetActiveUsers retrieves all active users
-	// It takes a context for request-scoped values
-	// Returns a slice of user pointers and an error if the operation fails
 	GetActiveUsers(ctx context.Context) ([]*model.User, error)
-	// ListUsers retrieves a paginated list of users
-	// It takes a context for request-scoped values, offset for pagination, and limit for page size
-	// Returns a slice of user pointers, the real total count, and an error if the operation fails
 	ListUsers(ctx context.Context, offset, limit int) ([]*model.User, int, error)
 }
 
@@ -73,8 +45,6 @@ func hashPassword(password string) (string, error) {
 }
 
 // NewUserUseCase creates a new instance of userUseCase
-// It takes a User repository implementation and a logger instance
-// Returns an implementation of the UserUseCase interface
 func NewUserUseCase(userRepo repository.User, appLogger logger.LoggerInterface) UserUseCase {
 	return &userUseCase{
 		userRepo: userRepo,
@@ -82,9 +52,7 @@ func NewUserUseCase(userRepo repository.User, appLogger logger.LoggerInterface) 
 	}
 }
 
-// CreateUser adds a new user with business validation
-// It takes a context for request-scoped values and a pointer to a User model
-// Returns an error if the operation fails
+// CreateUser creates a new user
 func (uc *userUseCase) CreateUser(ctx context.Context, user *model.User) error {
 	uc.logger.InfoContext(ctx, "Creating user in usecase", "email", user.Email)
 	// Business logic validation
@@ -124,9 +92,7 @@ func (uc *userUseCase) CreateUser(ctx context.Context, user *model.User) error {
 	return nil
 }
 
-// GetUserByID retrieves a user by their unique identifier
-// It takes a context for request-scoped values and the user ID
-// Returns the user model and an error if the operation fails
+// GetUserByID retrieves a user by ID
 func (uc *userUseCase) GetUserByID(ctx context.Context, id string) (*model.User, error) {
 	uc.logger.InfoContext(ctx, "Getting user by ID in usecase", "id", id)
 	if id == "" {
@@ -148,9 +114,7 @@ func (uc *userUseCase) GetUserByID(ctx context.Context, id string) (*model.User,
 	return user, nil
 }
 
-// GetUserByEmail retrieves a user by their email address
-// It takes a context for request-scoped values and the email address
-// Returns the user model and an error if the operation fails
+// GetUserByEmail retrieves a user by email
 func (uc *userUseCase) GetUserByEmail(ctx context.Context, email string) (*model.User, error) {
 	uc.logger.InfoContext(ctx, "Getting user by email in usecase", "email", email)
 	if email == "" {
@@ -172,9 +136,7 @@ func (uc *userUseCase) GetUserByEmail(ctx context.Context, email string) (*model
 	return user, nil
 }
 
-// UpdateUser modifies an existing user with business validation
-// It takes a context for request-scoped values and a pointer to a User model
-// Returns an error if the operation fails
+// UpdateUser updates an existing user
 func (uc *userUseCase) UpdateUser(ctx context.Context, user *model.User) error {
 	uc.logger.InfoContext(ctx, "Updating user in usecase", "id", user.ID, "email", user.Email)
 	if user.ID == "" {
@@ -218,9 +180,7 @@ func (uc *userUseCase) UpdateUser(ctx context.Context, user *model.User) error {
 	return nil
 }
 
-// UpdateUserStatus updates the active status of a user
-// It takes a context for request-scoped values, user ID, and the new active status
-// Returns an error if the operation fails
+// UpdateUserStatus updates user status
 func (uc *userUseCase) UpdateUserStatus(ctx context.Context, id string, isActive bool) error {
 	uc.logger.InfoContext(ctx, "Updating user status in usecase", "id", id, "isActive", isActive)
 	if id == "" {
@@ -251,9 +211,7 @@ func (uc *userUseCase) UpdateUserStatus(ctx context.Context, id string, isActive
 	return nil
 }
 
-// DeleteUser removes a user from the system
-// It takes a context for request-scoped values and the user ID
-// Returns an error if the operation fails
+// DeleteUser deletes a user
 func (uc *userUseCase) DeleteUser(ctx context.Context, id string) error {
 	uc.logger.InfoContext(ctx, "Deleting user in usecase", "id", id)
 	if id == "" {
@@ -275,9 +233,7 @@ func (uc *userUseCase) DeleteUser(ctx context.Context, id string) error {
 	return nil
 }
 
-// ListUsers retrieves a paginated list of users
-// It takes a context for request-scoped values, offset for pagination, and limit for page size
-// Returns a slice of user pointers, the real total count, and an error if the operation fails
+// ListUsers returns a paginated list of users
 func (uc *userUseCase) ListUsers(ctx context.Context, offset, limit int) ([]*model.User, int, error) {
 	uc.logger.InfoContext(ctx, "Listing users in usecase", "offset", offset, "limit", limit)
 	if offset < 0 {
@@ -300,9 +256,7 @@ func (uc *userUseCase) ListUsers(ctx context.Context, offset, limit int) ([]*mod
 	return users, total, nil
 }
 
-// GetUsersByAgentID retrieves users by their associated agent ID
-// It takes a context for request-scoped values and the agent ID
-// Returns a slice of user pointers and an error if the operation fails
+// GetUsersByAgentID retrieves users by agent ID
 func (uc *userUseCase) GetUsersByAgentID(ctx context.Context, agentID string) ([]*model.User, error) {
 	uc.logger.InfoContext(ctx, "Getting users by agent ID in usecase", "agentID", agentID)
 	if agentID == "" {
@@ -320,9 +274,7 @@ func (uc *userUseCase) GetUsersByAgentID(ctx context.Context, agentID string) ([
 	return users, nil
 }
 
-// GetActiveUsers retrieves all active users
-// It takes a context for request-scoped values
-// Returns a slice of user pointers and an error if the operation fails
+// GetActiveUsers retrieves active users
 func (uc *userUseCase) GetActiveUsers(ctx context.Context) ([]*model.User, error) {
 	uc.logger.InfoContext(ctx, "Getting active users in usecase")
 

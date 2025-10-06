@@ -15,53 +15,29 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-// AgentUseCase defines the interface for agent-related business operations
-// It provides methods for CRUD operations and listing agents with business logic
+// AgentUseCase defines business operations for agents
 type AgentUseCase interface {
-	// CreateAgent adds a new agent with business validation
-	// It takes a context for request-scoped values and a pointer to an Agent model
-	// Returns an error if the operation fails
 	CreateAgent(ctx context.Context, agent *model.Agent) error
-	// GetAgentByID retrieves an agent by their unique identifier
-	// It takes a context for request-scoped values and the agent ID
-	// Returns the agent model and an error if the operation fails
 	GetAgentByID(ctx context.Context, id string) (*model.Agent, error)
-	// UpdateAgent modifies an existing agent with business validation
-	// It takes a context for request-scoped values and a pointer to an Agent model
-	// Returns an error if the operation fails
 	UpdateAgent(ctx context.Context, agent *model.Agent) error
-	// DeleteAgent removes an agent from the system
-	// It takes a context for request-scoped values and the agent ID
-	// Returns an error if the operation fails
 	DeleteAgent(ctx context.Context, id string) error
-	// GetAgentsByParentID retrieves agents by their parent agent ID
-	// It takes a context for request-scoped values and the parent agent ID
-	// Returns a slice of agent pointers and an error if the operation fails
 	GetAgentsByParentID(ctx context.Context, parentID string) ([]*model.Agent, error)
-	// ListAgents retrieves a paginated list of agents
-	// It takes a context for request-scoped values, offset for pagination, and limit for page size
-	// Returns a slice of agent pointers, the real total count, and an error if the operation fails
 	ListAgents(ctx context.Context, offset, limit int) ([]*model.Agent, int, error)
-	// CreateSubAgentWithUser creates a new sub-agent and associated user in a single transactional operation
-	// It takes a context for request-scoped values, parent agent ID, and a CreateSubAgentWithUserRequest
-	// Returns the created agent and user models, or an error if the operation fails
 	CreateSubAgentWithUser(ctx context.Context, parentID string, req *agent_service.CreateSubAgentWithUserRequest) (*model.Agent, *model.User, error)
 }
 
 // agentUseCase implements the AgentUseCase interface
 type agentUseCase struct {
 	// agentRepo is the repository interface for agent database operations
-	agentRepo repository.Agent
+	agentRepo repository.TransactionalAgent
 	// userRepo is the repository interface for user database operations
-	userRepo repository.User
+	userRepo repository.TransactionalUser
 	// logger is used for logging operations within the usecase
 	logger logger.LoggerInterface
 }
 
 // NewAgentUseCase creates a new instance of agentUseCase
-// It takes an Agent repository implementation, User repository implementation, and a logger instance
-// Returns an implementation of the AgentUseCase interface
-func NewAgentUseCase(agentRepo repository.Agent, userRepo repository.User, appLogger logger.LoggerInterface) AgentUseCase {
+func NewAgentUseCase(agentRepo repository.TransactionalAgent, userRepo repository.TransactionalUser, appLogger logger.LoggerInterface) AgentUseCase {
 	return &agentUseCase{
 		agentRepo: agentRepo,
 		userRepo:  userRepo,
@@ -69,9 +45,7 @@ func NewAgentUseCase(agentRepo repository.Agent, userRepo repository.User, appLo
 	}
 }
 
-// CreateAgent adds a new agent with business validation
-// It takes a context for request-scoped values and a pointer to an Agent model
-// Returns an error if the operation fails
+// CreateAgent creates a new agent
 func (uc *agentUseCase) CreateAgent(ctx context.Context, agent *model.Agent) error {
 	uc.logger.InfoContext(ctx, "Creating agent in usecase", "email", agent.Email)
 	// Business logic validation
@@ -135,9 +109,7 @@ func (uc *agentUseCase) CreateAgent(ctx context.Context, agent *model.Agent) err
 	return nil
 }
 
-// GetAgentByID retrieves an agent by their unique identifier
-// It takes a context for request-scoped values and the agent ID
-// Returns the agent model and an error if the operation fails
+// GetAgentByID retrieves an agent by ID
 func (uc *agentUseCase) GetAgentByID(ctx context.Context, id string) (*model.Agent, error) {
 	uc.logger.InfoContext(ctx, "Getting agent by ID in usecase", "id", id)
 	if id == "" {
@@ -159,9 +131,7 @@ func (uc *agentUseCase) GetAgentByID(ctx context.Context, id string) (*model.Age
 	return agent, nil
 }
 
-// UpdateAgent modifies an existing agent with business validation
-// It takes a context for request-scoped values and a pointer to an Agent model
-// Returns an error if the operation fails
+// UpdateAgent updates an existing agent
 func (uc *agentUseCase) UpdateAgent(ctx context.Context, agent *model.Agent) error {
 	uc.logger.InfoContext(ctx, "Updating agent in usecase", "id", agent.ID, "email", agent.Email)
 	if agent.ID == "" {
@@ -229,9 +199,7 @@ func (uc *agentUseCase) UpdateAgent(ctx context.Context, agent *model.Agent) err
 	return nil
 }
 
-// DeleteAgent removes an agent from the system
-// It takes a context for request-scoped values and the agent ID
-// Returns an error if the operation fails
+// DeleteAgent deletes an agent
 func (uc *agentUseCase) DeleteAgent(ctx context.Context, id string) error {
 	uc.logger.InfoContext(ctx, "Deleting agent in usecase", "id", id)
 	if id == "" {
@@ -265,9 +233,7 @@ func (uc *agentUseCase) DeleteAgent(ctx context.Context, id string) error {
 	return nil
 }
 
-// ListAgents retrieves a paginated list of agents
-// It takes a context for request-scoped values, offset for pagination, and limit for page size
-// Returns a slice of agent pointers, the real total count, and an error if the operation fails
+// ListAgents returns a paginated list of agents
 func (uc *agentUseCase) ListAgents(ctx context.Context, offset, limit int) ([]*model.Agent, int, error) {
 	uc.logger.InfoContext(ctx, "Listing agents in usecase", "offset", offset, "limit", limit)
 	if offset < 0 {
@@ -290,9 +256,7 @@ func (uc *agentUseCase) ListAgents(ctx context.Context, offset, limit int) ([]*m
 	return agents, total, nil
 }
 
-// GetAgentsByParentID retrieves agents by their parent agent ID
-// It takes a context for request-scoped values and the parent agent ID
-// Returns a slice of agent pointers and an error if the operation fails
+// GetAgentsByParentID retrieves agents by parent ID
 func (uc *agentUseCase) GetAgentsByParentID(ctx context.Context, parentID string) ([]*model.Agent, error) {
 	uc.logger.InfoContext(ctx, "Getting agents by parent ID in usecase", "parentID", parentID)
 	if parentID == "" {
@@ -310,9 +274,7 @@ func (uc *agentUseCase) GetAgentsByParentID(ctx context.Context, parentID string
 	return agents, nil
 }
 
-// CreateSubAgentWithUser creates a new sub-agent and associated user in a single transactional operation
-// It takes a context for request-scoped values, parent agent ID, and a CreateSubAgentWithUserRequest
-// Returns the created agent and user models, or an error if the operation fails
+// CreateSubAgentWithUser creates a sub-agent with user
 func (uc *agentUseCase) CreateSubAgentWithUser(ctx context.Context, parentID string, req *agent_service.CreateSubAgentWithUserRequest) (*model.Agent, *model.User, error) {
 	uc.logger.InfoContext(ctx, "Creating sub-agent with user in usecase", "parentID", parentID, "agentEmail", req.AgentEmail, "userEmail", req.UserEmail)
 
@@ -359,25 +321,29 @@ func (uc *agentUseCase) CreateSubAgentWithUser(ctx context.Context, parentID str
 	}
 
 	// Use transaction to ensure atomicity
-	// Note: This assumes the repository implementations support transactions
-	// In a real implementation, you might need to modify the repositories to accept a transaction
+	// Both agent and user creation must succeed or both must fail
+	err = uc.agentRepo.ExecuteInTransaction(ctx, func(txCtx context.Context) error {
+		// Create the agent within the transaction
+		if err := uc.agentRepo.Create(txCtx, agent); err != nil {
+			uc.logger.ErrorContext(ctx, "Error creating agent in transaction", "email", agent.Email, "error", err)
+			return fmt.Errorf("error creating agent: %w", err)
+		}
 
-	// Create the agent first
-	if err := uc.agentRepo.Create(ctx, agent); err != nil {
-		uc.logger.ErrorContext(ctx, "Error creating agent", "email", agent.Email, "error", err)
-		return nil, nil, fmt.Errorf("error creating agent: %w", err)
-	}
+		// Set the agent ID in the user
+		user.AgentID = &agent.ID
 
-	// Set the agent ID in the user
-	user.AgentID = &agent.ID
+		// Create the user within the same transaction
+		if err := uc.userRepo.Create(txCtx, user); err != nil {
+			uc.logger.ErrorContext(ctx, "Error creating user in transaction", "email", user.Email, "error", err)
+			return fmt.Errorf("error creating user: %w", err)
+		}
 
-	// Create the user
-	if err := uc.userRepo.Create(ctx, user); err != nil {
-		// If user creation fails, we should ideally rollback the agent creation
-		// For now, we'll log the error and return it
-		uc.logger.ErrorContext(ctx, "Error creating user, agent was created but user creation failed", "email", user.Email, "agentID", agent.ID, "error", err)
-		// TODO: Implement proper transaction rollback
-		return nil, nil, fmt.Errorf("error creating user: %w", err)
+		return nil // Commit the transaction
+	})
+
+	if err != nil {
+		uc.logger.ErrorContext(ctx, "Transaction failed for sub-agent with user creation", "parentID", parentID, "error", err)
+		return nil, nil, err
 	}
 
 	uc.logger.InfoContext(ctx, "Sub-agent with user created successfully in usecase", "agentID", agent.ID, "userID", user.ID)
