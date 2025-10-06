@@ -42,7 +42,7 @@ func (r *supplierRepository) Create(ctx context.Context, supplier *model.Supplie
 }
 
 // GetByID retrieves a supplier by their unique identifier
-func (r *supplierRepository) GetByID(ctx context.Context, id int) (*model.Supplier, error) {
+func (r *supplierRepository) GetByID(ctx context.Context, id string) (*model.Supplier, error) {
 	r.logger.InfoContext(ctx, "Getting supplier by ID", "id", id)
 	var supplier model.Supplier
 	if err := r.db.WithContext(ctx).Where("id = ? AND deleted_at IS NULL", id).First(&supplier).Error; err != nil {
@@ -107,7 +107,7 @@ func (r *supplierRepository) Update(ctx context.Context, supplier *model.Supplie
 }
 
 // Delete removes a supplier (soft delete)
-func (r *supplierRepository) Delete(ctx context.Context, id int) error {
+func (r *supplierRepository) Delete(ctx context.Context, id string) error {
 	r.logger.InfoContext(ctx, "Deleting supplier", "id", id)
 	supplier := &model.Supplier{ID: id}
 

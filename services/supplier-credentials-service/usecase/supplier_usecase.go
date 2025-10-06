@@ -19,11 +19,11 @@ type SupplierUseCase interface {
 	// UpdateSupplier modifies an existing supplier
 	UpdateSupplier(ctx context.Context, supplier *model.Supplier) error
 	// DeleteSupplier removes a supplier
-	DeleteSupplier(ctx context.Context, id int) error
+	DeleteSupplier(ctx context.Context, id string) error
 	// ListSuppliers retrieves a paginated list of suppliers
 	ListSuppliers(ctx context.Context, offset, limit int) ([]*model.Supplier, int, error)
 	// GetSupplierByID retrieves a supplier by ID
-	GetSupplierByID(ctx context.Context, id int) (*model.Supplier, error)
+	GetSupplierByID(ctx context.Context, id string) (*model.Supplier, error)
 }
 
 // supplierUseCase implements the SupplierUseCase interface
@@ -82,7 +82,7 @@ func (uc *supplierUseCase) UpdateSupplier(ctx context.Context, supplier *model.S
 	uc.logger.InfoContext(ctx, "Updating supplier in usecase", "id", supplier.ID, "code", supplier.SupplierCode, "name", supplier.SupplierName)
 
 	// Business logic validation
-	if supplier.ID == 0 {
+	if supplier.ID == "" {
 		uc.logger.WarnContext(ctx, "Supplier ID is required for supplier update")
 		return domain.ErrSupplierIDRequired
 	}
@@ -145,7 +145,7 @@ func (uc *supplierUseCase) ListSuppliers(ctx context.Context, offset, limit int)
 }
 
 // GetSupplierByID retrieves a supplier by ID
-func (uc *supplierUseCase) GetSupplierByID(ctx context.Context, id int) (*model.Supplier, error) {
+func (uc *supplierUseCase) GetSupplierByID(ctx context.Context, id string) (*model.Supplier, error) {
 	uc.logger.InfoContext(ctx, "Getting supplier by ID in usecase", "id", id)
 
 	supplier, err := uc.supplierRepo.GetByID(ctx, id)
@@ -163,7 +163,7 @@ func (uc *supplierUseCase) GetSupplierByID(ctx context.Context, id int) (*model.
 }
 
 // DeleteSupplier deletes a supplier
-func (uc *supplierUseCase) DeleteSupplier(ctx context.Context, id int) error {
+func (uc *supplierUseCase) DeleteSupplier(ctx context.Context, id string) error {
 	uc.logger.InfoContext(ctx, "Deleting supplier in usecase", "id", id)
 
 	// Check if supplier exists first

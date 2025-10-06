@@ -4,7 +4,7 @@ package supplier_credentials_service
 // CreateCredentialRequest represents the request payload for creating a credential
 type CreateCredentialRequest struct {
 	IataAgentID string `json:"iata_agent_id" validate:"required,ulid"`
-	SupplierID  int    `json:"supplier_id" validate:"required,min=1"`
+	SupplierID  string `json:"supplier_id" validate:"required,ulid"`
 	Credentials string `json:"credentials" validate:"required"`
 }
 
@@ -33,7 +33,7 @@ type DeleteCredentialRequest struct {
 type CredentialResponse struct {
 	ID          string            `json:"id"`
 	IataAgentID string            `json:"iata_agent_id"`
-	SupplierID  int               `json:"supplier_id"`
+	SupplierID  string            `json:"supplier_id"`
 	Supplier    *SupplierResponse `json:"supplier,omitempty"`
 	Credentials string            `json:"credentials"`
 	CreatedAt   string            `json:"created_at"`
@@ -42,7 +42,7 @@ type CredentialResponse struct {
 
 // SupplierResponse represents the response payload for a supplier
 type SupplierResponse struct {
-	ID           int    `json:"id"`
+	ID           string `json:"id"`
 	SupplierCode string `json:"supplier_code"`
 	SupplierName string `json:"supplier_name"`
 }

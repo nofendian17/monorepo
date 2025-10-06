@@ -134,7 +134,7 @@ func (uc *credentialUseCase) CreateCredential(ctx context.Context, credential *m
 		return domain.ErrIataAgentIDRequired
 	}
 
-	if credential.SupplierID == 0 {
+	if credential.SupplierID == "" {
 		uc.logger.WarnContext(ctx, "Supplier ID is required for credential creation")
 		return domain.ErrSupplierIDRequired
 	}

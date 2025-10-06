@@ -81,7 +81,7 @@ func (r *credentialRepository) GetAll(ctx context.Context) ([]*model.AgentSuppli
 }
 
 // GetByAgentAndSupplier retrieves a credential by agent and supplier
-func (r *credentialRepository) GetByAgentAndSupplier(ctx context.Context, agentID string, supplierID int) (*model.AgentSupplierCredential, error) {
+func (r *credentialRepository) GetByAgentAndSupplier(ctx context.Context, agentID string, supplierID string) (*model.AgentSupplierCredential, error) {
 	r.logger.InfoContext(ctx, "Getting credential by agent and supplier", "agentID", agentID, "supplierID", supplierID)
 	var credential model.AgentSupplierCredential
 	if err := r.db.WithContext(ctx).Preload("Supplier").Where("iata_agent_id = ? AND supplier_id = ? AND deleted_at IS NULL", agentID, supplierID).First(&credential).Error; err != nil {

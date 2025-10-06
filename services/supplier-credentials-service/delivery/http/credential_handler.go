@@ -250,7 +250,7 @@ func (h *CredentialHandler) credentialToResponse(cred *model.AgentSupplierCreden
 		CreatedAt:   cred.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
 		UpdatedAt:   cred.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
 	}
-	if cred.Supplier.ID != 0 {
+	if cred.Supplier.ID != "" {
 		response.Supplier = &supplier_credentials_service.SupplierResponse{
 			ID:           cred.Supplier.ID,
 			SupplierCode: cred.Supplier.SupplierCode,

@@ -160,9 +160,8 @@ func (h *SupplierHandler) UpdateSupplierHandler(w http.ResponseWriter, r *http.R
 	h.Logger.InfoContext(ctx, "Update supplier handler called")
 
 	idStr := chi.URLParam(r, "id")
-	id, err := strconv.Atoi(idStr)
-	if err != nil || id <= 0 {
-		h.Logger.ErrorContext(ctx, "Invalid supplier ID", "id", idStr, "error", err)
+	if idStr == "" {
+		h.Logger.ErrorContext(ctx, "Invalid supplier ID", "id", idStr)
 		h.API.BadRequest(ctx, w, "Invalid supplier ID")
 		return
 	}
@@ -183,13 +182,13 @@ func (h *SupplierHandler) UpdateSupplierHandler(w http.ResponseWriter, r *http.R
 	}
 
 	supplier := &model.Supplier{
-		ID:           id,
+		ID:           idStr,
 		SupplierCode: req.SupplierCode,
 		SupplierName: req.SupplierName,
 	}
 
 	if err := h.SupplierUseCase.UpdateSupplier(ctx, supplier); err != nil {
-		h.Logger.ErrorContext(ctx, "Error updating supplier", "id", id, "error", err)
+		h.Logger.ErrorContext(ctx, "Error updating supplier", "id", idStr, "error", err)
 		h.handleSupplierError(ctx, w, err)
 		return
 	}
@@ -217,13 +216,13 @@ func (h *SupplierHandler) DeleteSupplierHandler(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	if err := h.SupplierUseCase.DeleteSupplier(ctx, id); err != nil {
-		h.Logger.ErrorContext(ctx, "Error deleting supplier", "id", id, "error", err)
+	if err := h.SupplierUseCase.DeleteSupplier(ctx, idStr); err != nil {
+		h.Logger.ErrorContext(ctx, "Error deleting supplier", "id", idStr, "error", err)
 		h.handleSupplierError(ctx, w, err)
 		return
 	}
 
-	h.Logger.InfoContext(ctx, "Supplier deleted successfully in handler", "id", id)
+	h.Logger.InfoContext(ctx, "Supplier deleted successfully in handler", "id", idStr)
 	h.API.Success(ctx, w, map[string]string{"message": "Supplier deleted successfully"})
 }
 
