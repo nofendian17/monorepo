@@ -91,6 +91,10 @@ func main() {
 	// Initialize Kafka client
 	kafkaClient, kafkaErr := kafka.New(
 		kafka.WithBrokers(cfg.Infrastructure.Kafka.Brokers...),
+		kafka.WithClientID(cfg.Application.Name),
+		kafka.WithAllowAutoTopicCreation(),
+		kafka.WithMetadataMaxAge(10*time.Minute),
+		kafka.WithRequestRetries(5),
 	)
 	if kafkaErr != nil {
 		appLogger.Error("Failed to initialize Kafka client", "error", kafkaErr)
