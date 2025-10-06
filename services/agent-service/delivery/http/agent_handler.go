@@ -90,7 +90,7 @@ func (h *AgentHandler) CreateHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleAgentError handles agent-related errors consistently
-func (h *AgentHandler) handleAgentError(ctx context.Context, w http.ResponseWriter, err error, id string) {
+func (h *AgentHandler) handleAgentError(ctx context.Context, w http.ResponseWriter, err error) {
 	switch {
 	case err.Error() == domain.ErrAgentNotFound.Message:
 		h.API.NotFound(ctx, w, err.Error())
@@ -111,7 +111,7 @@ func (h *AgentHandler) handleAgentError(ctx context.Context, w http.ResponseWrit
 	case err.Error() == domain.ErrAgentHasChildren.Message:
 		h.API.BadRequest(ctx, w, err.Error())
 	default:
-		h.Logger.ErrorContext(ctx, "Unexpected error", "id", id, "error", err)
+		h.Logger.ErrorContext(ctx, "Unexpected error", "error", err)
 		h.API.InternalServerError(ctx, w, "An unexpected error occurred")
 	}
 }
@@ -135,7 +135,7 @@ func (h *AgentHandler) GetByIDHandler(w http.ResponseWriter, r *http.Request) {
 
 	agent, err := h.AgentUseCase.GetAgentByID(ctx, req.ID)
 	if err != nil {
-		h.handleAgentError(ctx, w, err, req.ID)
+		h.handleAgentError(ctx, w, err)
 		return
 	}
 
@@ -175,7 +175,7 @@ func (h *AgentHandler) UpdateHandler(w http.ResponseWriter, r *http.Request) {
 	// Get existing agent
 	existingAgent, err := h.AgentUseCase.GetAgentByID(ctx, req.ID)
 	if err != nil {
-		h.handleAgentError(ctx, w, err, req.ID)
+		h.handleAgentError(ctx, w, err)
 		return
 	}
 
@@ -197,7 +197,7 @@ func (h *AgentHandler) UpdateHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.AgentUseCase.UpdateAgent(ctx, existingAgent); err != nil {
-		h.handleAgentError(ctx, w, err, existingAgent.ID)
+		h.handleAgentError(ctx, w, err)
 		return
 	}
 
@@ -223,7 +223,7 @@ func (h *AgentHandler) DeleteHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.AgentUseCase.DeleteAgent(ctx, req.ID); err != nil {
-		h.handleAgentError(ctx, w, err, req.ID)
+		h.handleAgentError(ctx, w, err)
 		return
 	}
 
@@ -384,7 +384,7 @@ func (h *AgentHandler) ListSubAgentsHandler(w http.ResponseWriter, r *http.Reque
 	// Check if parent agent exists
 	_, err := h.AgentUseCase.GetAgentByID(ctx, parentID)
 	if err != nil {
-		h.handleAgentError(ctx, w, err, parentID)
+		h.handleAgentError(ctx, w, err)
 		return
 	}
 

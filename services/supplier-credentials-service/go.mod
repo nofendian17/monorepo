@@ -1,4 +1,4 @@
-module agent-service
+module supplier-credentials-service
 
 go 1.24.7
 
@@ -6,7 +6,6 @@ require (
 	github.com/go-chi/chi/v5 v5.2.3
 	github.com/oklog/ulid/v2 v2.1.1
 	github.com/spf13/viper v1.21.0
-	golang.org/x/crypto v0.41.0
 	gorm.io/gorm v1.31.0
 )
 
@@ -26,4 +25,7 @@ require (
 	golang.org/x/sys v0.35.0 // indirect
 	golang.org/x/text v0.29.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
+	monorepo/contracts v0.0.0
 )
+
+replace monorepo/contracts => ../../contracts

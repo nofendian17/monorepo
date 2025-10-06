@@ -82,7 +82,7 @@ func (h *UserHandler) CreateHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleUserError handles user-related errors consistently
-func (h *UserHandler) handleUserError(ctx context.Context, w http.ResponseWriter, err error, id string) {
+func (h *UserHandler) handleUserError(ctx context.Context, w http.ResponseWriter, err error) {
 	switch {
 	case err.Error() == domain.ErrUserNotFound.Message:
 		h.API.NotFound(ctx, w, err.Error())
@@ -93,7 +93,7 @@ func (h *UserHandler) handleUserError(ctx context.Context, w http.ResponseWriter
 	case err.Error() == domain.ErrEmailAlreadyExists.Message:
 		h.API.BadRequest(ctx, w, domain.ErrEmailAlreadyExists.Message)
 	default:
-		h.Logger.ErrorContext(ctx, "Unexpected error", "id", id, "error", err)
+		h.Logger.ErrorContext(ctx, "Unexpected error", "error", err)
 		h.API.InternalServerError(ctx, w, "An unexpected error occurred")
 	}
 }
@@ -117,7 +117,7 @@ func (h *UserHandler) GetByIDHandler(w http.ResponseWriter, r *http.Request) {
 
 	user, err := h.UserUseCase.GetUserByID(ctx, req.ID)
 	if err != nil {
-		h.handleUserError(ctx, w, err, req.ID)
+		h.handleUserError(ctx, w, err)
 		return
 	}
 
@@ -192,7 +192,7 @@ func (h *UserHandler) UpdateHandler(w http.ResponseWriter, r *http.Request) {
 	// Get existing user
 	existingUser, err := h.UserUseCase.GetUserByID(ctx, req.ID)
 	if err != nil {
-		h.handleUserError(ctx, w, err, req.ID)
+		h.handleUserError(ctx, w, err)
 		return
 	}
 
@@ -214,7 +214,7 @@ func (h *UserHandler) UpdateHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.UserUseCase.UpdateUser(ctx, existingUser); err != nil {
-		h.handleUserError(ctx, w, err, existingUser.ID)
+		h.handleUserError(ctx, w, err)
 		return
 	}
 
@@ -263,14 +263,14 @@ func (h *UserHandler) UpdateStatusHandler(w http.ResponseWriter, r *http.Request
 	}
 
 	if err := h.UserUseCase.UpdateUserStatus(ctx, userID, req.IsActive); err != nil {
-		h.handleUserError(ctx, w, err, userID)
+		h.handleUserError(ctx, w, err)
 		return
 	}
 
 	// Get the updated user to return
 	user, err := h.UserUseCase.GetUserByID(ctx, userID)
 	if err != nil {
-		h.handleUserError(ctx, w, err, userID)
+		h.handleUserError(ctx, w, err)
 		return
 	}
 
@@ -296,7 +296,7 @@ func (h *UserHandler) DeleteHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.UserUseCase.DeleteUser(ctx, req.ID); err != nil {
-		h.handleUserError(ctx, w, err, req.ID)
+		h.handleUserError(ctx, w, err)
 		return
 	}
 
